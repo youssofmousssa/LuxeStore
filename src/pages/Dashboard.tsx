@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
@@ -15,12 +14,28 @@ import { Separator } from "@/components/ui/separator";
 import { Plus, Pencil, Trash2, Image as ImageIcon } from "lucide-react";
 import ProductCard from "@/components/ProductCard";
 
+interface Product {
+  id: string;
+  name: string;
+  price: number;
+  description: string;
+  categories: string[];
+  sizes: string[];
+  image: string;
+  createdAt?: string;
+  updatedAt: string;
+}
+
+interface ProductCardProps {
+  product: Product;
+}
+
 const Dashboard = () => {
   const { currentUser, isAdmin } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
 
-  const [products, setProducts] = useState<any[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
   const [activeTab, setActiveTab] = useState("women");
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -39,7 +54,6 @@ const Dashboard = () => {
   });
 
   useEffect(() => {
-    // Redirect if not admin
     if (currentUser && !isAdmin) {
       toast({
         variant: "destructive",
@@ -160,14 +174,13 @@ const Dashboard = () => {
     try {
       let imageUrl = formData.image;
       
-      // Upload image if new one is selected
       if (imageFile) {
         const timestamp = Date.now();
         const path = `products/${timestamp}_${imageFile.name}`;
         imageUrl = await uploadImage(imageFile, path);
       }
       
-      const productData = {
+      const productData: Omit<Product, 'id'> & { createdAt?: string } = {
         name: formData.name,
         price: parseFloat(formData.price),
         description: formData.description,
@@ -388,7 +401,7 @@ const Dashboard = () => {
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
               {filteredProducts.map((product) => (
                 <div key={product.id} className="relative group">
-                  <ProductCard product={product} />
+                  <ProductCard product={product as any} />
                   <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                     <Button
                       size="icon"

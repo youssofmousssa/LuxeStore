@@ -8,7 +8,7 @@ export interface CartItem {
   price: number;
   image: string;
   quantity: number;
-  size?: string;
+  selectedSize?: string;
 }
 
 interface CartContextType {
@@ -19,6 +19,11 @@ interface CartContextType {
   clearCart: () => void;
   itemCount: number;
   total: number;
+  // Add these properties to match what Cart.tsx and other files expect
+  cart: CartItem[];
+  removeFromCart: (item: CartItem) => void;
+  updateQuantity: (item: CartItem, quantity: number) => void;
+  addToCart: (item: CartItem) => void;
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
@@ -98,17 +103,32 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
   };
 
-  const updateQuantity = (id: string, quantity: number) => {
+  const updateQuantity = (idOrItem: string | CartItem, quantity: number) => {
     if (quantity <= 0) {
-      removeItem(id);
+      if (typeof idOrItem === 'string') {
+        removeItem(idOrItem);
+      } else {
+        removeItem(idOrItem.id);
+      }
       return;
     }
     
     setItems(prevItems => 
-      prevItems.map(item => 
-        item.id === id ? { ...item, quantity } : item
-      )
+      prevItems.map(item => {
+        const itemId = typeof idOrItem === 'string' ? idOrItem : idOrItem.id;
+        return item.id === itemId ? { ...item, quantity } : item;
+      })
     );
+  };
+
+  // Alias functions to match what's expected in other components
+  const addToCart = (item: CartItem) => {
+    const { quantity, ...itemWithoutQuantity } = item;
+    addItem(itemWithoutQuantity, quantity);
+  };
+
+  const removeFromCart = (item: CartItem) => {
+    removeItem(item.id);
   };
 
   const clearCart = () => {
@@ -133,7 +153,11 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     updateQuantity,
     clearCart,
     itemCount,
-    total
+    total,
+    // Add the aliases for the other components
+    cart: items,
+    removeFromCart,
+    addToCart
   };
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
