@@ -62,7 +62,7 @@ const Cart = ({ open, onOpenChange }: CartProps) => {
                   <div className="flex-1 min-w-0">
                     <h4 className="text-sm font-medium truncate">{item.name}</h4>
                     <p className="text-sm text-muted-foreground mt-1">
-                      {item.size && `Size: ${item.size}`}
+                      {item.selectedSize && `Size: ${item.selectedSize}`}
                     </p>
                     <div className="flex items-center mt-2">
                       <button

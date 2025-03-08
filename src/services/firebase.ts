@@ -56,10 +56,10 @@ export const getProducts = async (category?: string) => {
     
     const querySnapshot = await getDocs(q);
     const products = querySnapshot.docs.map(doc => {
-      const data = doc.data();
+      const data = doc.data() as Record<string, any>;
       return {
         id: doc.id,
-        ...data as Record<string, any>
+        ...data
       };
     });
     
@@ -76,10 +76,10 @@ export const getProduct = async (id: string) => {
     const docSnap = await getDoc(docRef);
     
     if (docSnap.exists()) {
-      const data = docSnap.data();
+      const data = docSnap.data() as Record<string, any>;
       return {
         id: docSnap.id,
-        ...data as Record<string, any>
+        ...data
       };
     } else {
       throw new Error("Product not found");

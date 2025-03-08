@@ -15,14 +15,13 @@ interface CartContextType {
   items: CartItem[];
   addItem: (item: Omit<CartItem, "quantity">, quantity?: number) => void;
   removeItem: (id: string) => void;
-  updateQuantity: (id: string, quantity: number) => void;
+  updateQuantity: (idOrItem: string | CartItem, quantity: number) => void;
   clearCart: () => void;
   itemCount: number;
   total: number;
-  // Add these properties to match what Cart.tsx and other files expect
+  // Aliases for compatibility
   cart: CartItem[];
   removeFromCart: (item: CartItem) => void;
-  updateQuantity: (item: CartItem, quantity: number) => void;
   addToCart: (item: CartItem) => void;
 }
 

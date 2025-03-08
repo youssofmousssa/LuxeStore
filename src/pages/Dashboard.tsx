@@ -26,10 +26,6 @@ interface Product {
   updatedAt: string;
 }
 
-interface ProductCardProps {
-  product: Product;
-}
-
 const Dashboard = () => {
   const { currentUser, isAdmin } = useAuth();
   const { toast } = useToast();
@@ -79,7 +75,7 @@ const Dashboard = () => {
     try {
       setLoading(true);
       const allProducts = await getProducts();
-      setProducts(allProducts);
+      setProducts(allProducts as Product[]);
     } catch (error) {
       console.error("Error fetching products:", error);
       toast({
@@ -139,7 +135,7 @@ const Dashboard = () => {
     setCurrentProductId("");
   };
 
-  const openModal = (product?: any) => {
+  const openModal = (product?: Product) => {
     resetForm();
     
     if (product) {
@@ -180,7 +176,7 @@ const Dashboard = () => {
         imageUrl = await uploadImage(imageFile, path);
       }
       
-      const productData: Omit<Product, 'id'> & { createdAt?: string } = {
+      const productData: Omit<Product, 'id'> = {
         name: formData.name,
         price: parseFloat(formData.price),
         description: formData.description,
@@ -197,8 +193,11 @@ const Dashboard = () => {
           description: "Product has been successfully updated",
         });
       } else {
-        productData.createdAt = new Date().toISOString();
-        await addProduct(productData);
+        const newProductData = {
+          ...productData,
+          createdAt: new Date().toISOString()
+        };
+        await addProduct(newProductData);
         toast({
           title: "Product Added",
           description: "New product has been successfully added",
@@ -401,7 +400,14 @@ const Dashboard = () => {
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
               {filteredProducts.map((product) => (
                 <div key={product.id} className="relative group">
-                  <ProductCard product={product as any} />
+                  <ProductCard 
+                    id={product.id}
+                    name={product.name}
+                    price={product.price}
+                    image={product.image}
+                    isNew={product.categories.includes('new-arrivals')}
+                    isSale={product.categories.includes('sale')}
+                  />
                   <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                     <Button
                       size="icon"
