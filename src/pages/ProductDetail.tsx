@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { getProduct, Product } from "../services/firebase";
@@ -6,7 +5,7 @@ import { useCart } from "../context/CartContext";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ShoppingCart } from "lucide-react";
+import { ShoppingCart, Image as ImageIcon } from "lucide-react";
 
 const ProductDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -14,6 +13,7 @@ const ProductDetail = () => {
   const [loading, setLoading] = useState(true);
   const [selectedSize, setSelectedSize] = useState<string>("");
   const [quantity, setQuantity] = useState(1);
+  const [imageError, setImageError] = useState(false);
   const { addItem } = useCart();
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -25,6 +25,7 @@ const ProductDetail = () => {
         setLoading(true);
         
         const productData = await getProduct(id);
+        console.log("Product data:", productData); // Debug: Log the product data
         setProduct(productData);
         
         // Set the first size as selected by default if sizes are available
@@ -70,6 +71,11 @@ const ProductDetail = () => {
       title: "Added to cart",
       description: `${product.name} has been added to your cart`,
     });
+  };
+
+  const handleImageError = () => {
+    console.log("Image failed to load");
+    setImageError(true);
   };
 
   if (loading) {
@@ -121,11 +127,19 @@ const ProductDetail = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
         {/* Product Image */}
         <div className="relative overflow-hidden rounded-xl bg-gray-50">
-          <img
-            src={product.image || "/placeholder.svg"}
-            alt={product.name}
-            className="w-full h-auto object-contain aspect-square"
-          />
+          {!imageError && product.image ? (
+            <img
+              src={product.image}
+              alt={product.name}
+              className="w-full h-auto object-contain aspect-square"
+              onError={handleImageError}
+            />
+          ) : (
+            <div className="w-full aspect-square flex flex-col items-center justify-center bg-gray-100 text-gray-400">
+              <ImageIcon size={64} />
+              <p className="mt-4">No image available</p>
+            </div>
+          )}
           {product.categories?.includes("sale") && (
             <div className="absolute top-4 left-4 bg-red-500 text-white px-3 py-1 rounded-full text-sm font-medium">
               Sale
@@ -203,6 +217,23 @@ const ProductDetail = () => {
           >
             <ShoppingCart className="mr-2 h-5 w-5" />
             Add to Cart
+          </Button>
+
+          {/* Share on WhatsApp */}
+          <Button
+            variant="outline"
+            className="w-full"
+            onClick={() => {
+              const message = encodeURIComponent(
+                `Check out this product: ${product.name}\n` +
+                `Price: $${product.price.toFixed(2)}\n` +
+                `Description: ${product.description || "No description available."}\n` +
+                `Link: ${window.location.href}`
+              );
+              window.open(`https://wa.me/?text=${message}`, '_blank');
+            }}
+          >
+            Share on WhatsApp
           </Button>
 
           {/* Additional Info */}

@@ -31,6 +31,9 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 const storage = getStorage(app);
 
+// ImgBB API Key
+const IMGBB_API_KEY = "53b224bc4d49e5d351b53ae7b088b085";
+
 // Auth functions
 export const loginUser = (email: string, password: string) => {
   return signInWithEmailAndPassword(auth, email, password);
@@ -152,12 +155,48 @@ export const deleteProduct = async (id: string) => {
   }
 };
 
-// Storage functions
+// Upload image to ImgBB instead of Firebase Storage
 export const uploadImage = async (file: File, path: string) => {
-  const storageRef = ref(storage, path);
-  await uploadBytes(storageRef, file);
-  const downloadURL = await getDownloadURL(storageRef);
-  return downloadURL;
+  try {
+    console.log("Uploading to ImgBB instead of Firebase Storage");
+    const formData = new FormData();
+    formData.append("image", file);
+    formData.append("key", IMGBB_API_KEY);
+    
+    const response = await fetch("https://api.imgbb.com/1/upload", {
+      method: "POST",
+      body: formData,
+    });
+    
+    if (!response.ok) {
+      throw new Error(`ImgBB upload failed: ${response.statusText}`);
+    }
+    
+    const data = await response.json();
+    console.log("ImgBB upload success:", data);
+    
+    if (data.success) {
+      return data.data.url;
+    } else {
+      throw new Error("ImgBB upload failed");
+    }
+  } catch (error) {
+    console.error("Error uploading image to ImgBB:", error);
+    throw error;
+  }
+};
+
+// Firebase Storage functions (kept as fallback)
+export const uploadImageToFirebase = async (file: File, path: string) => {
+  try {
+    const storageRef = ref(storage, path);
+    await uploadBytes(storageRef, file);
+    const downloadURL = await getDownloadURL(storageRef);
+    return downloadURL;
+  } catch (error) {
+    console.error("Error uploading to Firebase Storage:", error);
+    throw error;
+  }
 };
 
 export { auth, db, storage };

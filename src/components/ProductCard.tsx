@@ -1,7 +1,7 @@
 
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
-import { Heart, ShoppingBag } from "lucide-react";
+import { Heart, ShoppingBag, Image as ImageIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useCart } from "@/context/CartContext";
 
@@ -27,6 +27,7 @@ const ProductCard = ({
   className,
 }: ProductCardProps) => {
   const [isHovered, setIsHovered] = useState(false);
+  const [imageError, setImageError] = useState(false);
   const { addItem } = useCart();
 
   const handleAddToCart = (e: React.MouseEvent) => {
@@ -41,6 +42,11 @@ const ProductCard = ({
     });
   };
 
+  const handleImageError = () => {
+    console.log("Product card image failed to load:", image);
+    setImageError(true);
+  };
+
   return (
     <Link
       to={`/product/${id}`}
@@ -53,11 +59,19 @@ const ProductCard = ({
     >
       {/* Product Image */}
       <div className="aspect-[4/5] w-full overflow-hidden bg-secondary relative">
-        <img
-          src={image}
-          alt={name}
-          className="w-full h-full object-cover object-center transition-transform duration-700 group-hover:scale-105"
-        />
+        {!imageError && image ? (
+          <img
+            src={image}
+            alt={name}
+            className="w-full h-full object-cover object-center transition-transform duration-700 group-hover:scale-105"
+            onError={handleImageError}
+          />
+        ) : (
+          <div className="w-full h-full flex flex-col items-center justify-center bg-gray-100 text-gray-400">
+            <ImageIcon size={48} />
+            <p className="mt-2 text-sm">No image</p>
+          </div>
+        )}
         
         {/* Badges */}
         <div className="absolute top-2 left-2 flex flex-col gap-2">

@@ -10,7 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Pencil, Trash2, Image as ImageIcon, Loader2 } from "lucide-react";
+import { Plus, Pencil, Trash2, Image as ImageIcon, Loader2, AlertCircle } from "lucide-react";
 import ProductCard from "@/components/ProductCard";
 
 interface Product {
@@ -39,6 +39,7 @@ const Dashboard = () => {
   const [currentProductId, setCurrentProductId] = useState("");
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState("");
+  const [uploadError, setUploadError] = useState<string | null>(null);
 
   const [formData, setFormData] = useState({
     name: "",
@@ -121,6 +122,7 @@ const Dashboard = () => {
       const file = e.target.files[0];
       setImageFile(file);
       setImagePreview(URL.createObjectURL(file));
+      setUploadError(null);
     }
   };
 
@@ -137,6 +139,7 @@ const Dashboard = () => {
     setImagePreview("");
     setIsEditMode(false);
     setCurrentProductId("");
+    setUploadError(null);
   };
 
   const openModal = (product?: Product) => {
@@ -173,12 +176,25 @@ const Dashboard = () => {
     
     try {
       setIsSaving(true);
+      setUploadError(null);
       let imageUrl = formData.image;
       
       if (imageFile) {
-        const timestamp = Date.now();
-        const path = `products/${timestamp}_${imageFile.name}`;
-        imageUrl = await uploadImage(imageFile, path);
+        try {
+          const timestamp = Date.now();
+          const path = `products/${timestamp}_${imageFile.name}`;
+          console.log("Uploading image...");
+          imageUrl = await uploadImage(imageFile, path);
+          console.log("Image uploaded successfully:", imageUrl);
+        } catch (error) {
+          console.error("Error uploading image:", error);
+          setUploadError("Failed to upload image. Please try again.");
+          toast({
+            variant: "destructive",
+            title: "Upload Error",
+            description: "Failed to upload product image. You can still save the product without an image."
+          });
+        }
       }
       
       const productData: Omit<Product, 'id'> = {
@@ -350,6 +366,12 @@ const Dashboard = () => {
               
               <div className="space-y-3">
                 <Label htmlFor="image">Product Image *</Label>
+                {uploadError && (
+                  <div className="text-red-500 flex items-center text-sm">
+                    <AlertCircle size={16} className="mr-1" />
+                    {uploadError}
+                  </div>
+                )}
                 <div className="mt-2">
                   {imagePreview ? (
                     <div className="relative w-40 h-40 overflow-hidden rounded-md bg-gray-100">
