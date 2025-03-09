@@ -1,3 +1,4 @@
+
 import React, { useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useCart } from "../context/CartContext";
@@ -8,13 +9,15 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
+import { Loader2 } from "lucide-react";
 
 const Checkout = () => {
-  const { cart, total, clearCart } = useCart();
+  const { items, total, clearCart } = useCart();
   const { currentUser } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
   const orderSummaryRef = useRef<HTMLDivElement>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
 
   const [formData, setFormData] = useState({
     name: "",
@@ -37,7 +40,7 @@ const Checkout = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (cart.length === 0) {
+    if (items.length === 0) {
       toast({
         variant: "destructive",
         title: "Cart is empty",
@@ -47,14 +50,20 @@ const Checkout = () => {
     }
 
     try {
+      setIsProcessing(true);
+      
       // Capture the order summary as an image
       if (orderSummaryRef.current) {
         const canvas = await html2canvas(orderSummaryRef.current);
         const image = canvas.toDataURL("image/png");
 
         // Format WhatsApp message
+        const itemsList = items.map(item => 
+          `- ${item.name} (${item.quantity}x) - $${(item.price * item.quantity).toFixed(2)}${item.selectedSize ? ` - Size: ${item.selectedSize}` : ''}`
+        ).join('\n');
+        
         const message = encodeURIComponent(
-          `*New Order*\n\nCustomer: ${formData.name}\nEmail: ${formData.email}\nPhone: ${formData.phone}\nAddress: ${formData.address}, ${formData.city}, ${formData.state} ${formData.zip}\n\n*Total: $${total.toFixed(2)}*`
+          `*New Order*\n\n*Customer Details:*\nName: ${formData.name}\nEmail: ${formData.email}\nPhone: ${formData.phone}\nAddress: ${formData.address}, ${formData.city}, ${formData.state} ${formData.zip}\n\n*Order Items:*\n${itemsList}\n\n*Total: $${total.toFixed(2)}*`
         );
 
         // Open WhatsApp with pre-filled message
@@ -70,7 +79,7 @@ const Checkout = () => {
         clearCart();
         toast({
           title: "Order placed successfully",
-          description: "Your order has been sent via WhatsApp.",
+          description: "Your order has been sent via WhatsApp and the order summary has been downloaded.",
         });
         navigate("/");
       }
@@ -81,14 +90,16 @@ const Checkout = () => {
         title: "Error",
         description: "There was an error processing your order. Please try again.",
       });
+    } finally {
+      setIsProcessing(false);
     }
   };
 
-  if (cart.length === 0) {
+  if (items.length === 0) {
     return (
-      <div className="container-custom py-12 text-center">
-        <h1 className="heading-lg mb-4">Your cart is empty</h1>
-        <p className="paragraph mb-8">
+      <div className="container mx-auto py-12 px-4 text-center max-w-md">
+        <h1 className="text-2xl font-bold mb-4">Your cart is empty</h1>
+        <p className="text-gray-600 mb-8">
           You need to add some items to your cart before proceeding to checkout.
         </p>
         <Button onClick={() => navigate("/women")} className="mt-4">
@@ -99,14 +110,14 @@ const Checkout = () => {
   }
 
   return (
-    <div className="container-custom py-12 page-transition">
-      <h1 className="heading-lg mb-8">Checkout</h1>
+    <div className="container mx-auto py-12 px-4 max-w-7xl animate-fade-in">
+      <h1 className="text-3xl font-bold mb-8">Checkout</h1>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
         {/* Shipping Information */}
         <div>
-          <h2 className="text-xl font-bold mb-4">Shipping Information</h2>
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <h2 className="text-xl font-bold mb-6">Shipping Information</h2>
+          <form onSubmit={handleSubmit} className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="name">Full Name</Label>
@@ -117,6 +128,7 @@ const Checkout = () => {
                   onChange={handleChange}
                   required
                   placeholder="John Doe"
+                  className="h-11"
                 />
               </div>
               <div className="space-y-2">
@@ -129,6 +141,7 @@ const Checkout = () => {
                   onChange={handleChange}
                   required
                   placeholder="john@example.com"
+                  className="h-11"
                 />
               </div>
             </div>
@@ -142,6 +155,7 @@ const Checkout = () => {
                 onChange={handleChange}
                 required
                 placeholder="+1 (123) 456-7890"
+                className="h-11"
               />
             </div>
 
@@ -154,6 +168,7 @@ const Checkout = () => {
                 onChange={handleChange}
                 required
                 placeholder="123 Main St"
+                className="h-11"
               />
             </div>
 
@@ -167,6 +182,7 @@ const Checkout = () => {
                   onChange={handleChange}
                   required
                   placeholder="New York"
+                  className="h-11"
                 />
               </div>
               <div className="space-y-2">
@@ -178,6 +194,7 @@ const Checkout = () => {
                   onChange={handleChange}
                   required
                   placeholder="NY"
+                  className="h-11"
                 />
               </div>
               <div className="space-y-2 col-span-2 md:col-span-1">
@@ -189,61 +206,78 @@ const Checkout = () => {
                   onChange={handleChange}
                   required
                   placeholder="10001"
+                  className="h-11"
                 />
               </div>
             </div>
 
-            <Button type="submit" className="w-full py-6 mt-6">
-              Order Now
+            <Button 
+              type="submit" 
+              className="w-full py-6 mt-8" 
+              disabled={isProcessing}
+            >
+              {isProcessing ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Processing...
+                </>
+              ) : (
+                "Complete Order"
+              )}
             </Button>
           </form>
         </div>
 
         {/* Order Summary */}
         <div>
-          <h2 className="text-xl font-bold mb-4">Order Summary</h2>
+          <h2 className="text-xl font-bold mb-6">Order Summary</h2>
           <div ref={orderSummaryRef} className="bg-white p-6 border rounded-lg">
-            <div className="space-y-4">
-              {cart.map((item) => (
-                <div key={`${item.id}-${item.selectedSize}`} className="flex justify-between">
-                  <div className="flex">
-                    <div className="w-16 h-16 rounded-md overflow-hidden mr-4">
-                      <img
-                        src={item.image || "/placeholder.svg"}
-                        alt={item.name}
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-                    <div>
-                      <p className="font-medium">{item.name}</p>
-                      <p className="text-sm text-muted-foreground">
-                        {item.selectedSize && `Size: ${item.selectedSize}`} | Qty: {item.quantity}
-                      </p>
-                    </div>
+            <div className="space-y-6">
+              {items.map((item) => (
+                <div key={`${item.id}-${item.selectedSize}`} className="flex space-x-4">
+                  <div className="w-20 h-20 bg-gray-100 rounded-md overflow-hidden flex-shrink-0">
+                    <img
+                      src={item.image || "/placeholder.svg"}
+                      alt={item.name}
+                      className="w-full h-full object-cover"
+                    />
                   </div>
-                  <p className="font-medium">${(item.price * item.quantity).toFixed(2)}</p>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-medium">{item.name}</h3>
+                    <p className="text-sm text-gray-500 mt-1">
+                      {item.selectedSize && `Size: ${item.selectedSize}`} | Qty: {item.quantity}
+                    </p>
+                    <p className="font-medium mt-1">${(item.price * item.quantity).toFixed(2)}</p>
+                  </div>
                 </div>
               ))}
             </div>
 
-            <Separator className="my-4" />
+            <Separator className="my-6" />
 
-            <div className="space-y-2">
+            <div className="space-y-3">
               <div className="flex justify-between">
-                <span>Subtotal</span>
+                <span className="text-gray-600">Subtotal</span>
                 <span>${total.toFixed(2)}</span>
               </div>
               <div className="flex justify-between">
-                <span>Shipping</span>
+                <span className="text-gray-600">Shipping</span>
                 <span>Free</span>
               </div>
             </div>
 
-            <Separator className="my-4" />
+            <Separator className="my-6" />
 
-            <div className="flex justify-between font-bold">
+            <div className="flex justify-between font-bold text-lg">
               <span>Total</span>
               <span>${total.toFixed(2)}</span>
+            </div>
+
+            <div className="mt-6 p-4 bg-gray-50 rounded-lg border border-gray-100">
+              <p className="text-sm text-gray-600">
+                Your order will be processed and details will be sent via WhatsApp to our team. 
+                You'll receive a confirmation once your order is confirmed.
+              </p>
             </div>
           </div>
         </div>

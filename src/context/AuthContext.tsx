@@ -1,14 +1,16 @@
 
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { User, onAuthStateChanged } from "firebase/auth";
-import { auth, loginUser, registerUser, logoutUser } from "../services/firebase";
+import { auth, loginUser, logoutUser } from "../services/firebase";
 import { useToast } from "@/hooks/use-toast";
+
+// List of admin emails
+const ADMIN_EMAILS = ["admin@example.com", "admin@luxe.com"];
 
 interface AuthContextType {
   currentUser: User | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
-  register: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   isAdmin: boolean;
 }
@@ -32,8 +34,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       setCurrentUser(user);
-      // For simplicity, set admin to true if email contains "admin"
-      setIsAdmin(user?.email?.includes("admin") || false);
+      // Check if user's email is in the admin list
+      setIsAdmin(user?.email ? ADMIN_EMAILS.includes(user.email) : false);
       setLoading(false);
     });
 
@@ -44,33 +46,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       setLoading(true);
       await loginUser(email, password);
-      toast({
-        title: "Welcome back!",
-        description: "You've successfully logged in.",
-      });
+      
+      // Check if the email is in the admin list
+      if (ADMIN_EMAILS.includes(email)) {
+        toast({
+          title: "Welcome, Administrator!",
+          description: "You've successfully logged in as an admin.",
+        });
+      } else {
+        toast({
+          title: "Welcome back!",
+          description: "You've successfully logged in.",
+        });
+      }
     } catch (error: any) {
       toast({
         title: "Login failed",
-        description: error.message,
-        variant: "destructive",
-      });
-      throw error;
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const register = async (email: string, password: string) => {
-    try {
-      setLoading(true);
-      await registerUser(email, password);
-      toast({
-        title: "Account created",
-        description: "Your account has been successfully created.",
-      });
-    } catch (error: any) {
-      toast({
-        title: "Registration failed",
         description: error.message,
         variant: "destructive",
       });
@@ -101,7 +92,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     currentUser,
     loading,
     login,
-    register,
     logout,
     isAdmin
   };

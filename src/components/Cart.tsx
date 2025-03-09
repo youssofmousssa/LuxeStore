@@ -2,7 +2,7 @@
 import React from "react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
-import { useCart, CartItem } from "@/context/CartContext";
+import { useCart } from "@/context/CartContext";
 import { X, Minus, Plus, ShoppingBag } from "lucide-react";
 import { Link } from "react-router-dom";
 
@@ -14,10 +14,10 @@ interface CartProps {
 const Cart = ({ open, onOpenChange }: CartProps) => {
   const { items, removeItem, updateQuantity, clearCart, total } = useCart();
 
-  const handleUpdateQuantity = (item: CartItem, change: number) => {
-    const newQuantity = item.quantity + change;
+  const handleUpdateQuantity = (itemId: string, change: number, currentQuantity: number) => {
+    const newQuantity = currentQuantity + change;
     if (newQuantity > 0) {
-      updateQuantity(item.id, newQuantity);
+      updateQuantity(itemId, newQuantity);
     }
   };
 
@@ -25,7 +25,7 @@ const Cart = ({ open, onOpenChange }: CartProps) => {
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent className="w-full sm:max-w-md flex flex-col p-0">
         <SheetHeader className="p-6 border-b">
-          <SheetTitle>Your Cart</SheetTitle>
+          <SheetTitle className="text-xl">Your Cart</SheetTitle>
         </SheetHeader>
         
         {items.length === 0 ? (
@@ -48,10 +48,10 @@ const Cart = ({ open, onOpenChange }: CartProps) => {
             <div className="flex-1 overflow-y-auto p-6 space-y-6">
               {items.map((item) => (
                 <div 
-                  key={item.id} 
+                  key={`${item.id}-${item.selectedSize}`} 
                   className="flex items-start space-x-4 pb-4 border-b last:border-b-0 last:pb-0"
                 >
-                  <div className="relative h-20 w-16 bg-secondary rounded-md overflow-hidden flex-shrink-0">
+                  <div className="relative h-20 w-20 bg-gray-100 rounded-md overflow-hidden flex-shrink-0">
                     <img 
                       src={item.image} 
                       alt={item.name} 
@@ -66,7 +66,7 @@ const Cart = ({ open, onOpenChange }: CartProps) => {
                     </p>
                     <div className="flex items-center mt-2">
                       <button
-                        onClick={() => handleUpdateQuantity(item, -1)}
+                        onClick={() => handleUpdateQuantity(item.id, -1, item.quantity)}
                         className="p-1 rounded-full hover:bg-secondary"
                         aria-label="Decrease quantity"
                       >
@@ -76,7 +76,7 @@ const Cart = ({ open, onOpenChange }: CartProps) => {
                         {item.quantity}
                       </span>
                       <button
-                        onClick={() => handleUpdateQuantity(item, 1)}
+                        onClick={() => handleUpdateQuantity(item.id, 1, item.quantity)}
                         className="p-1 rounded-full hover:bg-secondary"
                         aria-label="Increase quantity"
                       >

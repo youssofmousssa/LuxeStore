@@ -10,8 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Separator } from "@/components/ui/separator";
-import { Plus, Pencil, Trash2, Image as ImageIcon } from "lucide-react";
+import { Plus, Pencil, Trash2, Image as ImageIcon, Loader2 } from "lucide-react";
 import ProductCard from "@/components/ProductCard";
 
 interface Product {
@@ -36,6 +35,7 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [currentProductId, setCurrentProductId] = useState("");
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState("");
@@ -44,7 +44,7 @@ const Dashboard = () => {
     name: "",
     price: "",
     description: "",
-    categories: [] as string[],
+    categories: ["women"] as string[],
     sizes: ["XS", "S", "M", "L", "XL"],
     image: "",
   });
@@ -96,17 +96,21 @@ const Dashboard = () => {
     }));
   };
 
-  const handleCategoryChange = (category: string) => {
+  const handleCategoryChange = (category: string, checked: boolean) => {
     setFormData((prev) => {
-      if (prev.categories.includes(category)) {
+      if (category === "women" && !checked) {
+        return prev;
+      }
+      
+      if (checked) {
         return {
           ...prev,
-          categories: prev.categories.filter((c) => c !== category),
+          categories: [...prev.categories.filter(c => c !== category), category],
         };
       } else {
         return {
           ...prev,
-          categories: [...prev.categories, category],
+          categories: prev.categories.filter(c => c !== category),
         };
       }
     });
@@ -125,7 +129,7 @@ const Dashboard = () => {
       name: "",
       price: "",
       description: "",
-      categories: [],
+      categories: ["women"],
       sizes: ["XS", "S", "M", "L", "XL"],
       image: "",
     });
@@ -145,7 +149,7 @@ const Dashboard = () => {
         name: product.name || "",
         price: product.price?.toString() || "",
         description: product.description || "",
-        categories: product.categories || [],
+        categories: product.categories || ["women"],
         sizes: product.sizes || ["XS", "S", "M", "L", "XL"],
         image: product.image || "",
       });
@@ -168,6 +172,7 @@ const Dashboard = () => {
     }
     
     try {
+      setIsSaving(true);
       let imageUrl = formData.image;
       
       if (imageFile) {
@@ -214,6 +219,8 @@ const Dashboard = () => {
         title: "Error",
         description: "Failed to save product",
       });
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -247,20 +254,22 @@ const Dashboard = () => {
   }
 
   return (
-    <div className="container-custom py-12 page-transition">
+    <div className="container mx-auto py-12 px-4 max-w-7xl animate-fade-in">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8">
-        <h1 className="heading-lg">Dashboard</h1>
+        <h1 className="text-3xl font-bold">Dashboard</h1>
         <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
           <DialogTrigger asChild>
             <Button className="mt-4 md:mt-0" onClick={() => openModal()}>
               <Plus size={18} className="mr-2" /> Add Product
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-[550px]">
+          <DialogContent className="sm:max-w-[600px]">
             <DialogHeader>
-              <DialogTitle>{isEditMode ? "Edit Product" : "Add New Product"}</DialogTitle>
+              <DialogTitle className="text-xl">
+                {isEditMode ? "Edit Product" : "Add New Product"}
+              </DialogTitle>
             </DialogHeader>
-            <form onSubmit={handleSubmit} className="space-y-4 mt-4">
+            <form onSubmit={handleSubmit} className="space-y-6 mt-4">
               <div className="space-y-2">
                 <Label htmlFor="name">Product Name *</Label>
                 <Input
@@ -270,6 +279,7 @@ const Dashboard = () => {
                   onChange={handleInputChange}
                   required
                   placeholder="Classic White T-Shirt"
+                  className="h-11"
                 />
               </div>
               
@@ -282,6 +292,7 @@ const Dashboard = () => {
                   onChange={handleInputChange}
                   required
                   placeholder="29.99"
+                  className="h-11"
                 />
               </div>
               
@@ -293,37 +304,59 @@ const Dashboard = () => {
                   value={formData.description}
                   onChange={handleInputChange}
                   placeholder="A comfortable, everyday t-shirt..."
-                  rows={3}
+                  rows={4}
                 />
               </div>
               
-              <div className="space-y-2">
+              <div className="space-y-3">
                 <Label>Categories</Label>
-                <div className="flex flex-wrap gap-4 mt-2">
-                  {["women", "new-arrivals", "sale"].map((category) => (
-                    <div key={category} className="flex items-center space-x-2">
-                      <Checkbox
-                        id={`category-${category}`}
-                        checked={formData.categories.includes(category)}
-                        onCheckedChange={() => handleCategoryChange(category)}
-                      />
-                      <Label htmlFor={`category-${category}`} className="capitalize">
-                        {category.replace(/-/g, " ")}
-                      </Label>
-                    </div>
-                  ))}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="category-women"
+                      checked={formData.categories.includes("women")}
+                      disabled={true}
+                    />
+                    <Label htmlFor="category-women" className="capitalize">
+                      Women (Default)
+                    </Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="category-new-arrivals"
+                      checked={formData.categories.includes("new-arrivals")}
+                      onCheckedChange={(checked) => 
+                        handleCategoryChange("new-arrivals", checked as boolean)
+                      }
+                    />
+                    <Label htmlFor="category-new-arrivals" className="capitalize">
+                      New Arrivals
+                    </Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="category-sale"
+                      checked={formData.categories.includes("sale")}
+                      onCheckedChange={(checked) => 
+                        handleCategoryChange("sale", checked as boolean)
+                      }
+                    />
+                    <Label htmlFor="category-sale" className="capitalize">
+                      Sale
+                    </Label>
+                  </div>
                 </div>
               </div>
               
-              <div className="space-y-2">
-                <Label htmlFor="image">Product Image</Label>
+              <div className="space-y-3">
+                <Label htmlFor="image">Product Image *</Label>
                 <div className="mt-2">
                   {imagePreview ? (
-                    <div className="relative w-40 h-40 overflow-hidden rounded-md">
+                    <div className="relative w-40 h-40 overflow-hidden rounded-md bg-gray-100">
                       <img
                         src={imagePreview}
                         alt="Product preview"
-                        className="w-full h-full object-cover"
+                        className="w-full h-full object-contain"
                       />
                       <Button
                         type="button"
@@ -368,11 +401,19 @@ const Dashboard = () => {
                     setIsModalOpen(false);
                     resetForm();
                   }}
+                  disabled={isSaving}
                 >
                   Cancel
                 </Button>
-                <Button type="submit">
-                  {isEditMode ? "Save Changes" : "Add Product"}
+                <Button type="submit" disabled={isSaving}>
+                  {isSaving ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      {isEditMode ? "Saving..." : "Adding..."}
+                    </>
+                  ) : (
+                    isEditMode ? "Save Changes" : "Add Product"
+                  )}
                 </Button>
               </div>
             </form>
@@ -381,7 +422,7 @@ const Dashboard = () => {
       </div>
       
       <Tabs defaultValue="women" value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="mb-6">
+        <TabsList className="mb-8">
           <TabsTrigger value="women">Women</TabsTrigger>
           <TabsTrigger value="new-arrivals">New Arrivals</TabsTrigger>
           <TabsTrigger value="sale">Sale</TabsTrigger>
@@ -390,11 +431,17 @@ const Dashboard = () => {
         
         <TabsContent value={activeTab} className="mt-0">
           {loading ? (
-            <p className="text-center py-12">Loading products...</p>
-          ) : filteredProducts.length === 0 ? (
             <div className="text-center py-12">
-              <p className="paragraph mb-4">No products found in this category.</p>
-              <Button onClick={() => openModal()}>Add Product</Button>
+              <Loader2 className="h-8 w-8 animate-spin mx-auto text-gray-400" />
+              <p className="mt-4 text-gray-500">Loading products...</p>
+            </div>
+          ) : filteredProducts.length === 0 ? (
+            <div className="text-center py-12 border-2 border-dashed border-gray-200 rounded-xl">
+              <p className="text-gray-500 mb-4">No products found in this category.</p>
+              <Button onClick={() => openModal()}>
+                <Plus size={16} className="mr-2" />
+                Add Product
+              </Button>
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
@@ -413,7 +460,7 @@ const Dashboard = () => {
                       size="icon"
                       variant="secondary"
                       onClick={() => openModal(product)}
-                      className="h-8 w-8"
+                      className="h-8 w-8 bg-white/90 shadow-sm"
                     >
                       <Pencil size={14} />
                     </Button>

@@ -6,7 +6,7 @@ import { useCart } from "../context/CartContext";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ShoppingCart, Heart } from "lucide-react";
+import { ShoppingCart } from "lucide-react";
 
 const ProductDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -14,7 +14,7 @@ const ProductDetail = () => {
   const [loading, setLoading] = useState(true);
   const [selectedSize, setSelectedSize] = useState<string>("");
   const [quantity, setQuantity] = useState(1);
-  const { addToCart } = useCart();
+  const { addItem } = useCart();
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -25,6 +25,10 @@ const ProductDetail = () => {
         setLoading(true);
         const productData = await getProduct(id);
         setProduct(productData);
+        // Set the first size as selected by default if sizes are available
+        if (productData.sizes && productData.sizes.length > 0) {
+          setSelectedSize(productData.sizes[0]);
+        }
       } catch (error) {
         console.error("Error fetching product:", error);
         toast({
@@ -50,11 +54,13 @@ const ProductDetail = () => {
       return;
     }
 
-    addToCart({
-      ...product,
+    addItem({
+      id: product.id,
+      name: product.name,
+      price: product.price,
+      image: product.image,
       selectedSize,
-      quantity,
-    });
+    }, quantity);
 
     toast({
       title: "Added to cart",
@@ -64,14 +70,29 @@ const ProductDetail = () => {
 
   if (loading) {
     return (
-      <div className="container-custom py-12">
+      <div className="container mx-auto max-w-6xl py-12 px-4">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           <Skeleton className="w-full h-[500px] rounded-lg" />
           <div className="space-y-4">
             <Skeleton className="w-3/4 h-10" />
             <Skeleton className="w-1/4 h-6" />
             <Skeleton className="w-full h-32" />
-            <Skeleton className="w-full h-12" />
+            <div className="space-y-2">
+              <Skeleton className="w-20 h-10" />
+              <div className="flex flex-wrap gap-2">
+                <Skeleton className="w-12 h-10" />
+                <Skeleton className="w-12 h-10" />
+                <Skeleton className="w-12 h-10" />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Skeleton className="w-20 h-6" />
+              <div className="flex items-center space-x-2">
+                <Skeleton className="w-10 h-10" />
+                <Skeleton className="w-10 h-10" />
+                <Skeleton className="w-10 h-10" />
+              </div>
+            </div>
             <Skeleton className="w-full h-12" />
           </div>
         </div>
@@ -81,9 +102,9 @@ const ProductDetail = () => {
 
   if (!product) {
     return (
-      <div className="container-custom py-12 text-center">
-        <h2 className="heading-lg">Product not found</h2>
-        <p className="paragraph mt-4">The product you're looking for doesn't exist or has been removed.</p>
+      <div className="container mx-auto max-w-6xl py-12 px-4 text-center">
+        <h2 className="text-2xl font-bold">Product not found</h2>
+        <p className="mt-4 text-gray-600">The product you're looking for doesn't exist or has been removed.</p>
         <Button onClick={() => navigate("/")} className="mt-6">
           Return to Home
         </Button>
@@ -92,14 +113,14 @@ const ProductDetail = () => {
   }
 
   return (
-    <div className="container-custom py-12 page-transition">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+    <div className="container mx-auto max-w-6xl py-12 px-4 animate-fade-in">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
         {/* Product Image */}
-        <div className="relative overflow-hidden rounded-lg">
+        <div className="relative overflow-hidden rounded-xl bg-gray-50">
           <img
             src={product.image || "/placeholder.svg"}
             alt={product.name}
-            className="w-full h-auto object-cover"
+            className="w-full h-auto object-contain aspect-square"
           />
           {product.categories?.includes("sale") && (
             <div className="absolute top-4 left-4 bg-red-500 text-white px-3 py-1 rounded-full text-sm font-medium">
@@ -114,26 +135,28 @@ const ProductDetail = () => {
         </div>
 
         {/* Product Details */}
-        <div className="space-y-6">
+        <div className="space-y-8">
           <div>
-            <h1 className="heading-lg">{product.name}</h1>
-            <p className="text-2xl font-bold mt-2">${product.price?.toFixed(2)}</p>
+            <h1 className="text-3xl font-bold">{product.name}</h1>
+            <p className="text-2xl font-medium mt-2">${product.price?.toFixed(2)}</p>
           </div>
 
-          <div>
-            <p className="paragraph">{product.description}</p>
+          {/* Description */}
+          <div className="prose">
+            <h3 className="text-lg font-medium">Description</h3>
+            <p className="text-gray-700">{product.description || "No description available."}</p>
           </div>
 
           {/* Sizes */}
           {product.sizes && product.sizes.length > 0 && (
             <div>
-              <h3 className="font-medium mb-3">Select Size</h3>
+              <h3 className="text-lg font-medium mb-3">Select Size</h3>
               <div className="flex flex-wrap gap-2">
                 {product.sizes.map((size: string) => (
                   <button
                     key={size}
                     onClick={() => setSelectedSize(size)}
-                    className={`px-4 py-2 border rounded-md ${
+                    className={`w-12 h-12 flex items-center justify-center border rounded-md transition-all ${
                       selectedSize === size
                         ? "bg-black text-white border-black"
                         : "border-gray-300 hover:border-black"
@@ -148,19 +171,21 @@ const ProductDetail = () => {
 
           {/* Quantity */}
           <div>
-            <h3 className="font-medium mb-3">Quantity</h3>
-            <div className="flex items-center space-x-2">
+            <h3 className="text-lg font-medium mb-3">Quantity</h3>
+            <div className="flex items-center">
               <button
                 onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                className="px-3 py-1 border rounded-md"
+                className="w-10 h-10 flex items-center justify-center border rounded-l-md"
                 disabled={quantity <= 1}
               >
                 -
               </button>
-              <span className="w-8 text-center">{quantity}</span>
+              <div className="w-16 h-10 flex items-center justify-center border-t border-b">
+                {quantity}
+              </div>
               <button
                 onClick={() => setQuantity(quantity + 1)}
-                className="px-3 py-1 border rounded-md"
+                className="w-10 h-10 flex items-center justify-center border rounded-r-md"
               >
                 +
               </button>
@@ -168,26 +193,17 @@ const ProductDetail = () => {
           </div>
 
           {/* Add to Cart Button */}
-          <div className="flex flex-col sm:flex-row gap-4">
-            <Button 
-              className="flex-1 px-8 py-6" 
-              onClick={handleAddToCart}
-            >
-              <ShoppingCart className="mr-2 h-5 w-5" />
-              Add to Cart
-            </Button>
-            <Button 
-              variant="outline" 
-              className="flex-1 px-8 py-6"
-            >
-              <Heart className="mr-2 h-5 w-5" />
-              Add to Wishlist
-            </Button>
-          </div>
+          <Button 
+            className="w-full py-6 text-lg" 
+            onClick={handleAddToCart}
+          >
+            <ShoppingCart className="mr-2 h-5 w-5" />
+            Add to Cart
+          </Button>
 
           {/* Additional Info */}
           <div className="border-t pt-4 mt-6">
-            <p className="text-sm text-muted-foreground">
+            <p className="text-sm text-gray-500">
               Free shipping on orders over $100
             </p>
           </div>

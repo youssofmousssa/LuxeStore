@@ -15,14 +15,14 @@ interface CartContextType {
   items: CartItem[];
   addItem: (item: Omit<CartItem, "quantity">, quantity?: number) => void;
   removeItem: (id: string) => void;
-  updateQuantity: (idOrItem: string | CartItem, quantity: number) => void;
+  updateQuantity: (id: string, quantity: number) => void;
   clearCart: () => void;
   itemCount: number;
   total: number;
   // Aliases for compatibility
   cart: CartItem[];
-  removeFromCart: (item: CartItem) => void;
   addToCart: (item: CartItem) => void;
+  removeFromCart: (id: string) => void;
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
@@ -58,10 +58,12 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const addItem = (item: Omit<CartItem, "quantity">, quantity = 1) => {
     setItems(prevItems => {
-      const existingItemIndex = prevItems.findIndex(i => i.id === item.id);
+      const existingItemIndex = prevItems.findIndex(i => 
+        i.id === item.id && i.selectedSize === item.selectedSize
+      );
       
       if (existingItemIndex >= 0) {
-        // Item exists, update quantity
+        // Item exists with same size, update quantity
         const updatedItems = [...prevItems];
         updatedItems[existingItemIndex] = {
           ...updatedItems[existingItemIndex],
@@ -102,20 +104,15 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
   };
 
-  const updateQuantity = (idOrItem: string | CartItem, quantity: number) => {
+  const updateQuantity = (id: string, quantity: number) => {
     if (quantity <= 0) {
-      if (typeof idOrItem === 'string') {
-        removeItem(idOrItem);
-      } else {
-        removeItem(idOrItem.id);
-      }
+      removeItem(id);
       return;
     }
     
     setItems(prevItems => 
       prevItems.map(item => {
-        const itemId = typeof idOrItem === 'string' ? idOrItem : idOrItem.id;
-        return item.id === itemId ? { ...item, quantity } : item;
+        return item.id === id ? { ...item, quantity } : item;
       })
     );
   };
@@ -126,8 +123,8 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     addItem(itemWithoutQuantity, quantity);
   };
 
-  const removeFromCart = (item: CartItem) => {
-    removeItem(item.id);
+  const removeFromCart = (id: string) => {
+    removeItem(id);
   };
 
   const clearCart = () => {
@@ -153,7 +150,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     clearCart,
     itemCount,
     total,
-    // Add the aliases for the other components
+    // Add the aliases for compatibility
     cart: items,
     removeFromCart,
     addToCart
