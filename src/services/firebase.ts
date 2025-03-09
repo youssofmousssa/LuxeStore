@@ -55,6 +55,16 @@ export interface Product {
   categories?: string[];
 }
 
+// Type for Firestore document data
+interface ProductData {
+  name: string;
+  price: number;
+  description?: string;
+  image?: string;
+  sizes?: string[];
+  categories?: string[];
+}
+
 // Products functions
 export const getProducts = async (category?: string) => {
   try {
@@ -67,7 +77,7 @@ export const getProducts = async (category?: string) => {
     
     const querySnapshot = await getDocs(q);
     const products = querySnapshot.docs.map(doc => {
-      const data = doc.data();
+      const data = doc.data() as ProductData;
       return {
         id: doc.id,
         name: data.name || "",
@@ -92,7 +102,7 @@ export const getProduct = async (id: string) => {
     const docSnap = await getDoc(docRef);
     
     if (docSnap.exists()) {
-      const data = docSnap.data();
+      const data = docSnap.data() as ProductData;
       return {
         id: docSnap.id,
         name: data.name || "",
