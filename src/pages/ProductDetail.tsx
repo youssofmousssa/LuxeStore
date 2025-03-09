@@ -1,6 +1,7 @@
+
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { getProduct, Product } from "../services/firebase";
+import { getProduct, Product, ensureSampleProducts } from "../services/firebase";
 import { useCart } from "../context/CartContext";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -14,6 +15,7 @@ const ProductDetail = () => {
   const [selectedSize, setSelectedSize] = useState<string>("");
   const [quantity, setQuantity] = useState(1);
   const [imageError, setImageError] = useState(false);
+  const [productNotFound, setProductNotFound] = useState(false);
   const { addItem } = useCart();
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -24,8 +26,11 @@ const ProductDetail = () => {
         if (!id) return;
         setLoading(true);
         
+        // First ensure sample products exist
+        await ensureSampleProducts();
+        
         const productData = await getProduct(id);
-        console.log("Product data:", productData); // Debug: Log the product data
+        console.log("Product data:", productData);
         setProduct(productData);
         
         // Set the first size as selected by default if sizes are available
@@ -34,6 +39,7 @@ const ProductDetail = () => {
         }
       } catch (error) {
         console.error("Error fetching product:", error);
+        setProductNotFound(true);
         toast({
           variant: "destructive",
           title: "Error",
@@ -110,7 +116,7 @@ const ProductDetail = () => {
     );
   }
 
-  if (!product) {
+  if (productNotFound || !product) {
     return (
       <div className="container mx-auto max-w-6xl py-12 px-4 text-center">
         <h2 className="text-2xl font-bold">Product not found</h2>

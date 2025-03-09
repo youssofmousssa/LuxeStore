@@ -11,7 +11,8 @@ import {
   updateDoc, 
   deleteDoc, 
   query, 
-  where 
+  where,
+  setDoc 
 } from "firebase/firestore";
 import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
 
@@ -68,9 +69,75 @@ interface ProductData {
   categories?: string[];
 }
 
+// Add sample products if they don't exist
+export const ensureSampleProducts = async () => {
+  try {
+    const sampleProducts = [
+      {
+        id: "1",
+        name: "Cotton Oversized T-Shirt",
+        price: 49.99,
+        description: "Comfortable and stylish oversized t-shirt made from 100% cotton.",
+        image: "https://images.unsplash.com/photo-1554568218-0f1715e72254?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=987&q=80",
+        sizes: ["S", "M", "L", "XL"],
+        categories: ["women", "new-arrivals"]
+      },
+      {
+        id: "2",
+        name: "Linen Blend Dress",
+        price: 89.99,
+        description: "Elegant linen blend dress perfect for summer days.",
+        image: "https://images.unsplash.com/photo-1595777457583-95e059d581b8?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1483&q=80",
+        sizes: ["XS", "S", "M", "L"],
+        categories: ["women"]
+      },
+      {
+        id: "3",
+        name: "Relaxed Fit Jeans",
+        price: 79.99,
+        description: "Comfortable relaxed fit jeans with a modern look.",
+        image: "https://images.unsplash.com/photo-1584370848010-d7fe6bc767ec?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=987&q=80",
+        salePrice: 59.99,
+        sizes: ["26", "28", "30", "32"],
+        categories: ["women", "sale"]
+      },
+      {
+        id: "4",
+        name: "Cashmere Sweater",
+        price: 149.99,
+        description: "Luxurious cashmere sweater for ultimate comfort.",
+        image: "https://images.unsplash.com/photo-1576566588028-4147f3842f27?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1364&q=80",
+        sizes: ["S", "M", "L"],
+        categories: ["women"]
+      }
+    ];
+
+    // Check if sample products exist
+    for (const product of sampleProducts) {
+      const docRef = doc(db, "products", product.id);
+      const docSnap = await getDoc(docRef);
+      
+      if (!docSnap.exists()) {
+        // Create sample product
+        const { id, ...productData } = product;
+        await setDoc(docRef, productData);
+        console.log(`Sample product created: ${product.name}`);
+      }
+    }
+    
+    return true;
+  } catch (error) {
+    console.error("Error ensuring sample products:", error);
+    return false;
+  }
+};
+
 // Products functions
 export const getProducts = async (category?: string) => {
   try {
+    // First ensure sample products exist
+    await ensureSampleProducts();
+    
     let q;
     if (category) {
       q = query(collection(db, "products"), where("categories", "array-contains", category));
@@ -101,6 +168,9 @@ export const getProducts = async (category?: string) => {
 
 export const getProduct = async (id: string) => {
   try {
+    // First ensure sample products exist
+    await ensureSampleProducts();
+    
     const docRef = doc(db, "products", id);
     const docSnap = await getDoc(docRef);
     
