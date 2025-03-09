@@ -56,14 +56,16 @@ const Checkout = () => {
       if (orderSummaryRef.current) {
         const canvas = await html2canvas(orderSummaryRef.current);
         const image = canvas.toDataURL("image/png");
+        const orderNumber = Date.now();
+        const filename = `order_${orderNumber}.png`;
 
-        // Format WhatsApp message with images and item details
+        // Format WhatsApp message with order details but without individual product images
         const itemsList = items.map(item => 
-          `- ${item.name} (${item.quantity}x) - $${(item.price * item.quantity).toFixed(2)}${item.selectedSize ? ` - Size: ${item.selectedSize}` : ''}\n  Image: ${item.image || 'No image available'}`
-        ).join('\n\n');
+          `- ${item.name} (${item.quantity}x) - $${(item.price * item.quantity).toFixed(2)}${item.selectedSize ? ` - Size: ${item.selectedSize}` : ''}`
+        ).join('\n');
         
         const message = encodeURIComponent(
-          `*New Order*\n\n*Customer Details:*\nName: ${formData.name}\nEmail: ${formData.email}\nPhone: ${formData.phone}\nAddress: ${formData.address}, ${formData.city}, ${formData.state} ${formData.zip}\n\n*Order Items:*\n${itemsList}\n\n*Total: $${total.toFixed(2)}*`
+          `*New Order #${orderNumber}*\n\n*Customer Details:*\nName: ${formData.name}\nEmail: ${formData.email}\nPhone: ${formData.phone}\nAddress: ${formData.address}, ${formData.city}, ${formData.state} ${formData.zip}\n\n*Order Items:*\n${itemsList}\n\n*Total: $${total.toFixed(2)}*\n\nPlease see the attached image for complete order details.`
         );
 
         // Open WhatsApp with pre-filled message
@@ -72,7 +74,7 @@ const Checkout = () => {
         // Also provide the image for download
         const link = document.createElement("a");
         link.href = image;
-        link.download = `order_${Date.now()}.png`;
+        link.download = filename;
         link.click();
 
         // Clear cart and redirect to home
@@ -240,6 +242,9 @@ const Checkout = () => {
                       src={item.image || "/placeholder.svg"}
                       alt={item.name}
                       className="w-full h-full object-cover"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).src = "/placeholder.svg";
+                      }}
                     />
                   </div>
                   <div className="flex-1 min-w-0">
