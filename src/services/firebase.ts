@@ -44,6 +44,17 @@ export const logoutUser = () => {
   return signOut(auth);
 };
 
+// Define Product interface
+export interface Product {
+  id: string;
+  name: string;
+  price: number;
+  description?: string;
+  image?: string;
+  sizes?: string[];
+  categories?: string[];
+}
+
 // Products functions
 export const getProducts = async (category?: string) => {
   try {
@@ -56,11 +67,16 @@ export const getProducts = async (category?: string) => {
     
     const querySnapshot = await getDocs(q);
     const products = querySnapshot.docs.map(doc => {
-      const data = doc.data() as Record<string, any>;
+      const data = doc.data();
       return {
         id: doc.id,
-        ...data
-      };
+        name: data.name || "",
+        price: data.price || 0,
+        description: data.description || "",
+        image: data.image || "",
+        sizes: data.sizes || [],
+        categories: data.categories || []
+      } as Product;
     });
     
     return products;
@@ -76,11 +92,16 @@ export const getProduct = async (id: string) => {
     const docSnap = await getDoc(docRef);
     
     if (docSnap.exists()) {
-      const data = docSnap.data() as Record<string, any>;
+      const data = docSnap.data();
       return {
         id: docSnap.id,
-        ...data
-      };
+        name: data.name || "",
+        price: data.price || 0,
+        description: data.description || "",
+        image: data.image || "",
+        sizes: data.sizes || [],
+        categories: data.categories || []
+      } as Product;
     } else {
       throw new Error("Product not found");
     }

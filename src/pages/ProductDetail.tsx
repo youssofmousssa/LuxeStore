@@ -1,23 +1,12 @@
 
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { getProduct } from "../services/firebase";
+import { getProduct, Product } from "../services/firebase";
 import { useCart } from "../context/CartContext";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ShoppingCart } from "lucide-react";
-
-// Define a proper Product type
-interface Product {
-  id: string;
-  name: string;
-  price: number;
-  description?: string;
-  image?: string;
-  sizes?: string[];
-  categories?: string[];
-}
 
 const ProductDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -34,8 +23,10 @@ const ProductDetail = () => {
       try {
         if (!id) return;
         setLoading(true);
+        
         const productData = await getProduct(id);
-        setProduct(productData as Product);
+        setProduct(productData);
+        
         // Set the first size as selected by default if sizes are available
         if (productData.sizes && productData.sizes.length > 0) {
           setSelectedSize(productData.sizes[0]);
@@ -131,16 +122,16 @@ const ProductDetail = () => {
         {/* Product Image */}
         <div className="relative overflow-hidden rounded-xl bg-gray-50">
           <img
-            src={product?.image || "/placeholder.svg"}
-            alt={product?.name}
+            src={product.image || "/placeholder.svg"}
+            alt={product.name}
             className="w-full h-auto object-contain aspect-square"
           />
-          {product?.categories?.includes("sale") && (
+          {product.categories?.includes("sale") && (
             <div className="absolute top-4 left-4 bg-red-500 text-white px-3 py-1 rounded-full text-sm font-medium">
               Sale
             </div>
           )}
-          {product?.categories?.includes("new-arrivals") && (
+          {product.categories?.includes("new-arrivals") && (
             <div className="absolute top-4 right-4 bg-black text-white px-3 py-1 rounded-full text-sm font-medium">
               New
             </div>
@@ -150,18 +141,18 @@ const ProductDetail = () => {
         {/* Product Details */}
         <div className="space-y-8">
           <div>
-            <h1 className="text-3xl font-bold">{product?.name}</h1>
-            <p className="text-2xl font-medium mt-2">${product?.price?.toFixed(2)}</p>
+            <h1 className="text-3xl font-bold">{product.name}</h1>
+            <p className="text-2xl font-medium mt-2">${product.price.toFixed(2)}</p>
           </div>
 
           {/* Description */}
           <div className="prose">
             <h3 className="text-lg font-medium">Description</h3>
-            <p className="text-gray-700">{product?.description || "No description available."}</p>
+            <p className="text-gray-700">{product.description || "No description available."}</p>
           </div>
 
           {/* Sizes */}
-          {product?.sizes && product.sizes.length > 0 && (
+          {product.sizes && product.sizes.length > 0 && (
             <div>
               <h3 className="text-lg font-medium mb-3">Select Size</h3>
               <div className="flex flex-wrap gap-2">

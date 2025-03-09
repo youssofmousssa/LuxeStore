@@ -57,10 +57,10 @@ const Checkout = () => {
         const canvas = await html2canvas(orderSummaryRef.current);
         const image = canvas.toDataURL("image/png");
 
-        // Format WhatsApp message
+        // Format WhatsApp message with images and item details
         const itemsList = items.map(item => 
-          `- ${item.name} (${item.quantity}x) - $${(item.price * item.quantity).toFixed(2)}${item.selectedSize ? ` - Size: ${item.selectedSize}` : ''}`
-        ).join('\n');
+          `- ${item.name} (${item.quantity}x) - $${(item.price * item.quantity).toFixed(2)}${item.selectedSize ? ` - Size: ${item.selectedSize}` : ''}\n  Image: ${item.image || 'No image available'}`
+        ).join('\n\n');
         
         const message = encodeURIComponent(
           `*New Order*\n\n*Customer Details:*\nName: ${formData.name}\nEmail: ${formData.email}\nPhone: ${formData.phone}\nAddress: ${formData.address}, ${formData.city}, ${formData.state} ${formData.zip}\n\n*Order Items:*\n${itemsList}\n\n*Total: $${total.toFixed(2)}*`
