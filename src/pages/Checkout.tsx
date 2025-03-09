@@ -65,7 +65,16 @@ const Checkout = () => {
         ).join('\n');
         
         const message = encodeURIComponent(
-          `*New Order #${orderNumber}*\n\n*Customer Details:*\nName: ${formData.name}\nEmail: ${formData.email}\nPhone: ${formData.phone}\nAddress: ${formData.address}, ${formData.city}, ${formData.state} ${formData.zip}\n\n*Order Items:*\n${itemsList}\n\n*Total: $${total.toFixed(2)}*\n\nPlease see the attached image for complete order details.`
+          `*New Order #${orderNumber}*\n\n` +
+          `*Customer Details:*\n` +
+          `Name: ${formData.name}\n` +
+          `Email: ${formData.email}\n` +
+          `Phone: ${formData.phone}\n` +
+          `Address: ${formData.address}, ${formData.city}, ${formData.state} ${formData.zip}\n\n` +
+          `*Order Items:*\n` +
+          `${itemsList}\n\n` +
+          `*Total: $${total.toFixed(2)}*\n\n` +
+          `Please see the attached image for complete order details.`
         );
 
         // Open WhatsApp with pre-filled message
