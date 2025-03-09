@@ -1,184 +1,303 @@
-import React, { useState, useEffect } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
-import { ShoppingBag, Menu, X, User, LogOut } from "lucide-react";
-import { useAuth } from "@/context/AuthContext";
-import { useCart } from "@/context/CartContext";
-import AuthModal from "./AuthModal";
-import Cart from "./Cart";
-import { cn } from "@/lib/utils";
 
-const Navbar = () => {
-  const [isScrolled, setIsScrolled] = useState(false);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [authModalOpen, setAuthModalOpen] = useState(false);
-  const [cartOpen, setCartOpen] = useState(false);
-  const [dropdownVisible, setDropdownVisible] = useState(false);
+import React, { useState, useRef } from "react";
+import { useNavigate } from "react-router-dom";
+import { useCart } from "../context/CartContext";
+import { useAuth } from "../context/AuthContext";
+import { useToast } from "@/hooks/use-toast";
+import html2canvas from "html2canvas";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
+import { Loader2 } from "lucide-react";
 
-  const location = useLocation();
+const Checkout = () => {
+  const { items, total, clearCart } = useCart();
+  const { currentUser } = useAuth();
+  const { toast } = useToast();
   const navigate = useNavigate();
-  const { currentUser, logout } = useAuth();
-  const { itemCount } = useCart();
+  const orderSummaryRef = useRef<HTMLDivElement>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
 
-  useEffect(() => {
-    const handleScroll = () => {
-      setIsScrolled(window.scrollY > 50);
-    };
+  const [formData, setFormData] = useState({
+    name: "",
+    email: currentUser?.email || "",
+    phone: "",
+    address: "",
+    city: "",
+    state: "",
+    zip: "",
+  });
 
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+  };
 
-  useEffect(() => {
-    setMobileMenuOpen(false);
-  }, [location.pathname]);
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
 
-  const navLinks = [
-    { name: "Home", path: "/" },
-    { name: "Women", path: "/women" },
-    { name: "New Arrivals", path: "/new-arrivals" },
-    { name: "Sale", path: "/sale" },
-  ];
+    if (items.length === 0) {
+      toast({
+        variant: "destructive",
+        title: "Cart is empty",
+        description: "Your cart is empty. Please add some items before checking out.",
+      });
+      return;
+    }
 
-  const handleLogout = async () => {
     try {
-      await logout();
-      navigate("/");
+      setIsProcessing(true);
+      
+      // Capture the order summary as an image
+      if (orderSummaryRef.current) {
+        const canvas = await html2canvas(orderSummaryRef.current);
+        const image = canvas.toDataURL("image/png");
+        const orderNumber = Date.now();
+        const filename = `order_${orderNumber}.png`;
+
+        // Format WhatsApp message with order details but without individual product images
+        const itemsList = items.map(item => 
+          `- ${item.name} (${item.quantity}x) - $${(item.price * item.quantity).toFixed(2)}${item.selectedSize ? ` - Size: ${item.selectedSize}` : ''}`
+        ).join('\n');
+        
+        const message = encodeURIComponent(
+          `*New Order #${orderNumber}*\n\n` +
+          `*Customer Details:*\n` +
+          `Name: ${formData.name}\n` +
+          `Email: ${formData.email}\n` +
+          `Phone: ${formData.phone}\n` +
+          `Address: ${formData.address}, ${formData.city}, ${formData.state} ${formData.zip}\n\n` +
+          `*Order Items:*\n` +
+          `${itemsList}\n\n` +
+          `*Total: $${total.toFixed(2)}*\n\n` +
+          `Please see the attached image for complete order details.`
+        );
+
+        // Open WhatsApp with pre-filled message
+        window.open(`https://wa.me/96176565298?text=${message}`, "_blank");
+
+        // Also provide the image for download
+        const link = document.createElement("a");
+        link.href = image;
+        link.download = filename;
+        link.click();
+
+        // Clear cart and redirect to home
+        clearCart();
+        toast({
+          title: "Order placed successfully",
+          description: "Your order has been sent via WhatsApp and the order summary has been downloaded.",
+        });
+        navigate("/");
+      }
     } catch (error) {
-      console.error("Error logging out:", error);
+      console.error("Error processing order:", error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "There was an error processing your order. Please try again.",
+      });
+    } finally {
+      setIsProcessing(false);
     }
   };
 
-  const toggleDropdown = () => {
-    if (!currentUser) {
-      setAuthModalOpen(true);
-    } else {
-      setDropdownVisible(!dropdownVisible);
-    }
-  };
-
-  const userInitial = currentUser?.email.charAt(0).toUpperCase();
+  if (items.length === 0) {
+    return (
+      <div className="container mx-auto py-12 px-4 text-center max-w-md">
+        <h1 className="text-2xl font-bold mb-4">Your cart is empty</h1>
+        <p className="text-gray-600 mb-8">
+          You need to add some items to your cart before proceeding to checkout.
+        </p>
+        <Button onClick={() => navigate("/women")} className="mt-4">
+          Continue Shopping
+        </Button>
+      </div>
+    );
+  }
 
   return (
-    <>
-      <header 
-        className={cn(
-          "fixed top-0 left-0 right-0 z-50 transition-all duration-300",
-          isScrolled 
-            ? "bg-white/90 backdrop-blur-md shadow-lg py-3" 
-            : "bg-white/50 backdrop-blur-sm py-5"
-        )}
-      >
-        <div className="container mx-auto px-4">
-          <div className="flex items-center justify-between">
-            {/* Logo */}
-            <Link 
-              to="/" 
-              className="text-2xl font-bold tracking-tight"
-            >
-              <span className="bg-clip-text text-transparent bg-gradient-to-r from-black to-gray-600">
-                LUXE
-              </span>
-            </Link>
+    <div className="container mx-auto py-12 px-4 max-w-7xl animate-fade-in">
+      <h1 className="text-3xl font-bold mb-8">Checkout</h1>
 
-            {/* Desktop Navigation */}
-            <nav className="hidden md:flex items-center space-x-8">
-              {navLinks.map((link) => (
-                <Link
-                  key={link.name}
-                  to={link.path}
-                  className={cn(
-                    "text-sm font-medium hover:text-primary transition duration-300",
-                    location.pathname === link.path && "font-semibold"
-                  )}
-                >
-                  {link.name}
-                </Link>
-              ))}
-            </nav>
-
-            {/* Right Actions */}
-            <div className="flex items-center space-x-4">
-              {/* User Dropdown */}
-              <div className="relative">
-                <button 
-                  onClick={toggleDropdown}
-                  className="flex items-center justify-center w-10 h-10 bg-gray-200 rounded-full text-gray-700 hover:bg-gray-300 transition duration-300"
-                >
-                  {userInitial}
-                </button>
-                {dropdownVisible && (
-                  <div className="absolute right-0 mt-2 w-48 bg-white shadow-lg rounded-lg border border-gray-200 overflow-hidden transition-transform transform scale-95 opacity-100">
-                    <div className="px-4 py-3 bg-gray-100 text-center font-medium text-gray-800 border-b border-gray-200">
-                      {currentUser?.email}
-                    </div>
-                    <Link 
-                      to="/dashboard" 
-                      className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition duration-300"
-                      onClick={() => setDropdownVisible(false)}
-                    >
-                      <User className="mr-2" />
-                      Dashboard
-                    </Link>
-                    <button 
-                      onClick={handleLogout}
-                      className="flex items-center w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100 transition duration-300"
-                    >
-                      <LogOut className="mr-2" />
-                      Logout
-                    </button>
-                  </div>
-                )}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+        {/* Shipping Information */}
+        <div>
+          <h2 className="text-xl font-bold mb-6">Shipping Information</h2>
+          <form onSubmit={handleSubmit} className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="name">Full Name</Label>
+                <Input
+                  id="name"
+                  name="name"
+                  value={formData.name}
+                  onChange={handleChange}
+                  required
+                  placeholder="John Doe"
+                  className="h-11"
+                />
               </div>
+              <div className="space-y-2">
+                <Label htmlFor="email">Email</Label>
+                <Input
+                  id="email"
+                  name="email"
+                  type="email"
+                  value={formData.email}
+                  onChange={handleChange}
+                  required
+                  placeholder="john@example.com"
+                  className="h-11"
+                />
+              </div>
+            </div>
 
-              {/* Cart */}
-              <button 
-                onClick={() => setCartOpen(true)}
-                className="p-2 hover:bg-gray-100 rounded-full relative transition duration-300"
-              >
-                <ShoppingBag size={20} />
-                {itemCount > 0 && (
-                  <span className="absolute -top-1 -right-1 w-5 h-5 bg-black text-white rounded-full text-xs flex items-center justify-center">
-                    {itemCount}
-                  </span>
-                )}
-              </button>
+            <div className="space-y-2">
+              <Label htmlFor="phone">Phone Number</Label>
+              <Input
+                id="phone"
+                name="phone"
+                value={formData.phone}
+                onChange={handleChange}
+                required
+                placeholder="+1 (123) 456-7890"
+                className="h-11"
+              />
+            </div>
 
-              {/* Hamburger Menu */}
-              <button
-                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                className="md:hidden p-2 hover:bg-gray-100 rounded-full transition duration-300"
-              >
-                {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
-              </button>
+            <div className="space-y-2">
+              <Label htmlFor="address">Address</Label>
+              <Input
+                id="address"
+                name="address"
+                value={formData.address}
+                onChange={handleChange}
+                required
+                placeholder="123 Main St"
+                className="h-11"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="city">City</Label>
+                <Input
+                  id="city"
+                  name="city"
+                  value={formData.city}
+                  onChange={handleChange}
+                  required
+                  placeholder="New York"
+                  className="h-11"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="state">State/Province</Label>
+                <Input
+                  id="state"
+                  name="state"
+                  value={formData.state}
+                  onChange={handleChange}
+                  required
+                  placeholder="NY"
+                  className="h-11"
+                />
+              </div>
+              <div className="space-y-2 col-span-2 md:col-span-1">
+                <Label htmlFor="zip">Zip/Postal Code</Label>
+                <Input
+                  id="zip"
+                  name="zip"
+                  value={formData.zip}
+                  onChange={handleChange}
+                  required
+                  placeholder="10001"
+                  className="h-11"
+                />
+              </div>
+            </div>
+
+            <Button 
+              type="submit" 
+              className="w-full py-6 mt-8" 
+              disabled={isProcessing}
+            >
+              {isProcessing ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Processing...
+                </>
+              ) : (
+                "Complete Order"
+              )}
+            </Button>
+          </form>
+        </div>
+
+        {/* Order Summary */}
+        <div>
+          <h2 className="text-xl font-bold mb-6">Order Summary</h2>
+          <div ref={orderSummaryRef} className="bg-white p-6 border rounded-lg">
+            <div className="space-y-6">
+              {items.map((item) => (
+                <div key={`${item.id}-${item.selectedSize}`} className="flex space-x-4">
+                  <div className="w-20 h-20 bg-gray-100 rounded-md overflow-hidden flex-shrink-0">
+                    <img
+                      src={item.image || "/placeholder.svg"}
+                      alt={item.name}
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).src = "/placeholder.svg";
+                      }}
+                    />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-medium">{item.name}</h3>
+                    <p className="text-sm text-gray-500 mt-1">
+                      {item.selectedSize && `Size: ${item.selectedSize}`} | Qty: {item.quantity}
+                    </p>
+                    <p className="font-medium mt-1">${(item.price * item.quantity).toFixed(2)}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <Separator className="my-6" />
+
+            <div className="space-y-3">
+              <div className="flex justify-between">
+                <span className="text-gray-600">Subtotal</span>
+                <span>${total.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-600">Shipping</span>
+                <span>Free</span>
+              </div>
+            </div>
+
+            <Separator className="my-6" />
+
+            <div className="flex justify-between font-bold text-lg">
+              <span>Total</span>
+              <span>${total.toFixed(2)}</span>
+            </div>
+
+            <div className="mt-6 p-4 bg-gray-50 rounded-lg border border-gray-100">
+              <p className="text-sm text-gray-600">
+                Your order will be processed and details will be sent via WhatsApp to our team. 
+                You'll receive a confirmation once your order is confirmed.
+              </p>
             </div>
           </div>
-
-          {/* Mobile Menu */}
-          {mobileMenuOpen && (
-            <ul className="md:hidden py-4 space-y-2">
-              {navLinks.map((link) => (
-                <li key={link.name}>
-                  <Link
-                    to={link.path}
-                    className={cn(
-                      "block py-2 px-4 text-base hover:bg-gray-50 rounded-md transition duration-300",
-                      location.pathname === link.path && "font-semibold bg-gray-50"
-                    )}
-                    onClick={() => setMobileMenuOpen(false)}
-                  >
-                    {link.name}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          )}
         </div>
-      </header>
-
-      <AuthModal open={authModalOpen} onOpenChange={setAuthModalOpen} />
-      <Cart open={cartOpen} onOpenChange={setCartOpen} />
-    </>
+      </div>
+    </div>
   );
 };
 
-export default Navbar;
+export default Checkout;
