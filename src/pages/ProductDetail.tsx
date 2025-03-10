@@ -6,7 +6,8 @@ import { useCart } from "../context/CartContext";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ShoppingCart, Image as ImageIcon } from "lucide-react";
+import { ShoppingCart } from "lucide-react";
+import ProductImageGallery from "@/components/ProductImageGallery";
 
 const ProductDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -14,7 +15,6 @@ const ProductDetail = () => {
   const [loading, setLoading] = useState(true);
   const [selectedSize, setSelectedSize] = useState<string>("");
   const [quantity, setQuantity] = useState(1);
-  const [imageError, setImageError] = useState(false);
   const [productNotFound, setProductNotFound] = useState(false);
   const { addItem } = useCart();
   const { toast } = useToast();
@@ -69,7 +69,7 @@ const ProductDetail = () => {
       id: product.id,
       name: product.name,
       price: product.price,
-      image: product.image || "",
+      image: product.images && product.images.length > 0 ? product.images[0] : "",
       selectedSize,
     }, quantity);
 
@@ -77,11 +77,6 @@ const ProductDetail = () => {
       title: "Added to cart",
       description: `${product.name} has been added to your cart`,
     });
-  };
-
-  const handleImageError = () => {
-    console.log("Image failed to load");
-    setImageError(true);
   };
 
   if (loading) {
@@ -131,32 +126,11 @@ const ProductDetail = () => {
   return (
     <div className="container mx-auto max-w-6xl py-12 px-4 animate-fade-in">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
-        {/* Product Image */}
-        <div className="relative overflow-hidden rounded-xl bg-gray-50">
-          {!imageError && product.image ? (
-            <img
-              src={product.image}
-              alt={product.name}
-              className="w-full h-auto object-contain aspect-square"
-              onError={handleImageError}
-            />
-          ) : (
-            <div className="w-full aspect-square flex flex-col items-center justify-center bg-gray-100 text-gray-400">
-              <ImageIcon size={64} />
-              <p className="mt-4">No image available</p>
-            </div>
-          )}
-          {product.categories?.includes("sale") && (
-            <div className="absolute top-4 left-4 bg-red-500 text-white px-3 py-1 rounded-full text-sm font-medium">
-              Sale
-            </div>
-          )}
-          {product.categories?.includes("new-arrivals") && (
-            <div className="absolute top-4 right-4 bg-black text-white px-3 py-1 rounded-full text-sm font-medium">
-              New
-            </div>
-          )}
-        </div>
+        {/* Product Image Gallery */}
+        <ProductImageGallery 
+          images={product.images || []} 
+          productName={product.name} 
+        />
 
         {/* Product Details */}
         <div className="space-y-8">

@@ -6,7 +6,6 @@ import Hero from "@/components/Hero";
 import { Filter, Search, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
@@ -15,7 +14,7 @@ interface Product {
   id: string;
   name: string;
   price: number;
-  image: string;
+  images: string[]; // Changed from image to images
   isNew?: boolean;
   isSale?: boolean;
   salePrice?: number;
@@ -78,25 +77,13 @@ const Products = ({ category = "all" }: ProductsProps) => {
           fetchedProducts = await getProducts(category) as Product[];
         }
         
-        // If no products fetched yet, use sample data
-        if (fetchedProducts.length === 0) {
-          fetchedProducts = sampleProducts.filter(p => 
-            category === "all" || 
-            (p.categories && p.categories.includes(category))
-          );
-        }
-        
         setProducts(fetchedProducts);
         setFilteredProducts(fetchedProducts);
       } catch (error) {
         console.error("Error fetching products:", error);
-        // Fallback to sample data if error
-        const fallbackProducts = sampleProducts.filter(p => 
-          category === "all" || 
-          (p.categories && p.categories.includes(category))
-        );
-        setProducts(fallbackProducts);
-        setFilteredProducts(fallbackProducts);
+        // Show empty state instead of sample data
+        setProducts([]);
+        setFilteredProducts([]);
       } finally {
         setLoading(false);
       }
@@ -131,73 +118,6 @@ const Products = ({ category = "all" }: ProductsProps) => {
         : [...prev, size]
     );
   };
-
-  // Sample products for initial development
-  const sampleProducts: Product[] = [
-    {
-      id: "1",
-      name: "Cotton Oversized T-Shirt",
-      price: 49.99,
-      image: "https://images.unsplash.com/photo-1554568218-0f1715e72254?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=987&q=80",
-      isNew: true,
-      categories: ["women", "new-arrivals"]
-    },
-    {
-      id: "2",
-      name: "Linen Blend Dress",
-      price: 89.99,
-      image: "https://images.unsplash.com/photo-1595777457583-95e059d581b8?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1483&q=80",
-      categories: ["women"]
-    },
-    {
-      id: "3",
-      name: "Relaxed Fit Jeans",
-      price: 79.99,
-      image: "https://images.unsplash.com/photo-1584370848010-d7fe6bc767ec?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=987&q=80",
-      isSale: true,
-      salePrice: 59.99,
-      categories: ["women", "sale"]
-    },
-    {
-      id: "4",
-      name: "Cashmere Sweater",
-      price: 149.99,
-      image: "https://images.unsplash.com/photo-1576566588028-4147f3842f27?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1364&q=80",
-      categories: ["women"]
-    },
-    {
-      id: "5",
-      name: "Silk Blouse",
-      price: 129.99,
-      image: "https://images.unsplash.com/photo-1582142306909-195724d0b6cf?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80",
-      isNew: true,
-      categories: ["women", "new-arrivals"]
-    },
-    {
-      id: "6",
-      name: "Midi Skirt",
-      price: 69.99,
-      image: "https://images.unsplash.com/photo-1551163943-3f7fb896e0db?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80",
-      categories: ["women"]
-    },
-    {
-      id: "7",
-      name: "Wide Leg Trousers",
-      price: 99.99,
-      image: "https://images.unsplash.com/photo-1509631179647-0177331693ae?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=988&q=80",
-      isSale: true,
-      salePrice: 79.99,
-      categories: ["women", "sale"]
-    },
-    {
-      id: "8",
-      name: "Linen Shorts",
-      price: 59.99,
-      image: "https://images.unsplash.com/photo-1591369822096-ffd140ec948f?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=987&q=80",
-      isNew: true,
-      categories: ["women", "new-arrivals"]
-    }
-  ];
   
   return (
     <div className="page-transition">
@@ -320,16 +240,22 @@ const Products = ({ category = "all" }: ProductsProps) => {
         ) : filteredProducts.length === 0 ? (
           <div className="text-center py-16">
             <h3 className="text-xl font-medium mb-2">No products found</h3>
-            <p className="text-muted-foreground mb-6">Try adjusting your search or filter criteria</p>
-            <Button 
-              onClick={() => {
-                setSearchQuery("");
-                setPriceRange([0, 1000]);
-                setSelectedSizes([]);
-              }}
-            >
-              Reset All Filters
-            </Button>
+            <p className="text-muted-foreground mb-6">
+              {searchQuery || selectedSizes.length > 0 || priceRange[0] > 0 || priceRange[1] < 1000 
+                ? "Try adjusting your search or filter criteria" 
+                : "Add products from the dashboard to see them here"}
+            </p>
+            {(searchQuery || selectedSizes.length > 0 || priceRange[0] > 0 || priceRange[1] < 1000) && (
+              <Button 
+                onClick={() => {
+                  setSearchQuery("");
+                  setPriceRange([0, 1000]);
+                  setSelectedSizes([]);
+                }}
+              >
+                Reset All Filters
+              </Button>
+            )}
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-6 gap-y-10">
@@ -339,9 +265,9 @@ const Products = ({ category = "all" }: ProductsProps) => {
                 id={product.id}
                 name={product.name}
                 price={product.price}
-                image={product.image}
-                isNew={category !== "new-arrivals" && product.isNew}
-                isSale={product.isSale}
+                images={product.images}
+                isNew={category !== "new-arrivals" && product.categories.includes('new-arrivals')}
+                isSale={product.categories.includes('sale')}
                 salePrice={product.salePrice}
               />
             ))}

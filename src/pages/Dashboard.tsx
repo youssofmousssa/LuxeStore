@@ -1,8 +1,15 @@
+
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useToast } from "@/hooks/use-toast";
-import { getProducts, addProduct, updateProduct, deleteProduct, uploadImage } from "../services/firebase";
+import { 
+  getProducts, 
+  addProduct, 
+  updateProduct, 
+  deleteProduct, 
+  uploadMultipleImages 
+} from "../services/firebase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -10,8 +17,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Pencil, Trash2, Image as ImageIcon, Loader2, AlertCircle } from "lucide-react";
+import { Plus, Pencil, Trash2, Loader2, AlertCircle } from "lucide-react";
 import ProductCard from "@/components/ProductCard";
+import MultipleImageUpload from "@/components/MultipleImageUpload";
 
 interface Product {
   id: string;
@@ -20,7 +28,7 @@ interface Product {
   description: string;
   categories: string[];
   sizes: string[];
-  image: string;
+  images: string[];
   createdAt?: string;
   updatedAt: string;
 }
@@ -37,8 +45,7 @@ const Dashboard = () => {
   const [isEditMode, setIsEditMode] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [currentProductId, setCurrentProductId] = useState("");
-  const [imageFile, setImageFile] = useState<File | null>(null);
-  const [imagePreview, setImagePreview] = useState("");
+  const [uploadImages, setUploadImages] = useState<(string | File)[]>([]);
   const [uploadError, setUploadError] = useState<string | null>(null);
 
   const [formData, setFormData] = useState({
@@ -47,7 +54,7 @@ const Dashboard = () => {
     description: "",
     categories: ["women"] as string[],
     sizes: ["XS", "S", "M", "L", "XL"],
-    image: "",
+    images: [] as string[],
   });
 
   useEffect(() => {
@@ -117,13 +124,16 @@ const Dashboard = () => {
     });
   };
 
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
-      setImageFile(file);
-      setImagePreview(URL.createObjectURL(file));
-      setUploadError(null);
-    }
+  const handleImagesChange = (images: (string | File)[]) => {
+    console.log("Images changed:", images);
+    setUploadImages(images);
+
+    // Update form data with any string URLs (existing images)
+    const stringUrls = images.filter(img => typeof img === 'string') as string[];
+    setFormData(prev => ({
+      ...prev,
+      images: stringUrls
+    }));
   };
 
   const resetForm = () => {
@@ -133,10 +143,9 @@ const Dashboard = () => {
       description: "",
       categories: ["women"],
       sizes: ["XS", "S", "M", "L", "XL"],
-      image: "",
+      images: [],
     });
-    setImageFile(null);
-    setImagePreview("");
+    setUploadImages([]);
     setIsEditMode(false);
     setCurrentProductId("");
     setUploadError(null);
@@ -154,9 +163,9 @@ const Dashboard = () => {
         description: product.description || "",
         categories: product.categories || ["women"],
         sizes: product.sizes || ["XS", "S", "M", "L", "XL"],
-        image: product.image || "",
+        images: product.images || [],
       });
-      setImagePreview(product.image || "");
+      setUploadImages(product.images || []);
     }
     
     setIsModalOpen(true);
@@ -177,22 +186,27 @@ const Dashboard = () => {
     try {
       setIsSaving(true);
       setUploadError(null);
-      let imageUrl = formData.image;
+      let productImages = formData.images; // Start with existing image URLs
       
-      if (imageFile) {
+      // Get file objects to upload
+      const filesToUpload = uploadImages.filter(img => typeof img !== 'string') as File[];
+      
+      if (filesToUpload.length > 0) {
         try {
-          const timestamp = Date.now();
-          const path = `products/${timestamp}_${imageFile.name}`;
-          console.log("Uploading image...");
-          imageUrl = await uploadImage(imageFile, path);
-          console.log("Image uploaded successfully:", imageUrl);
+          console.log("Uploading images...");
+          const uploadedUrls = await uploadMultipleImages(filesToUpload);
+          console.log("Images uploaded successfully:", uploadedUrls);
+          
+          // Combine existing image URLs with newly uploaded ones
+          const existingUrls = uploadImages.filter(img => typeof img === 'string') as string[];
+          productImages = [...existingUrls, ...uploadedUrls];
         } catch (error) {
-          console.error("Error uploading image:", error);
-          setUploadError("Failed to upload image. Please try again.");
+          console.error("Error uploading images:", error);
+          setUploadError("Failed to upload images. Please try again.");
           toast({
             variant: "destructive",
             title: "Upload Error",
-            description: "Failed to upload product image. You can still save the product without an image."
+            description: "Failed to upload product images. You can still save the product with existing images."
           });
         }
       }
@@ -203,7 +217,7 @@ const Dashboard = () => {
         description: formData.description,
         categories: formData.categories,
         sizes: formData.sizes,
-        image: imageUrl,
+        images: productImages,
         updatedAt: new Date().toISOString(),
       };
       
@@ -225,7 +239,7 @@ const Dashboard = () => {
         });
       }
       
-      fetchProducts();
+      await fetchProducts(); // Refresh products list
       setIsModalOpen(false);
       resetForm();
     } catch (error) {
@@ -279,7 +293,7 @@ const Dashboard = () => {
               <Plus size={18} className="mr-2" /> Add Product
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-[600px]">
+          <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle className="text-xl">
                 {isEditMode ? "Edit Product" : "Add New Product"}
@@ -365,54 +379,16 @@ const Dashboard = () => {
               </div>
               
               <div className="space-y-3">
-                <Label htmlFor="image">Product Image *</Label>
+                <MultipleImageUpload
+                  existingImages={formData.images}
+                  onChange={handleImagesChange}
+                />
                 {uploadError && (
                   <div className="text-red-500 flex items-center text-sm">
                     <AlertCircle size={16} className="mr-1" />
                     {uploadError}
                   </div>
                 )}
-                <div className="mt-2">
-                  {imagePreview ? (
-                    <div className="relative w-40 h-40 overflow-hidden rounded-md bg-gray-100">
-                      <img
-                        src={imagePreview}
-                        alt="Product preview"
-                        className="w-full h-full object-contain"
-                      />
-                      <Button
-                        type="button"
-                        variant="secondary"
-                        size="sm"
-                        className="absolute bottom-2 right-2"
-                        onClick={() => {
-                          setImageFile(null);
-                          setImagePreview("");
-                          setFormData((prev) => ({ ...prev, image: "" }));
-                        }}
-                      >
-                        Remove
-                      </Button>
-                    </div>
-                  ) : (
-                    <div className="w-40 h-40 border-2 border-dashed border-gray-300 rounded-md flex flex-col items-center justify-center">
-                      <ImageIcon className="w-8 h-8 text-gray-400" />
-                      <Label
-                        htmlFor="file-upload"
-                        className="mt-2 cursor-pointer text-primary text-sm"
-                      >
-                        Upload Image
-                      </Label>
-                      <input
-                        id="file-upload"
-                        type="file"
-                        className="hidden"
-                        accept="image/*"
-                        onChange={handleImageChange}
-                      />
-                    </div>
-                  )}
-                </div>
               </div>
               
               <div className="flex justify-end gap-2 pt-4">
@@ -473,7 +449,7 @@ const Dashboard = () => {
                     id={product.id}
                     name={product.name}
                     price={product.price}
-                    image={product.image}
+                    images={product.images}
                     isNew={product.categories.includes('new-arrivals')}
                     isSale={product.categories.includes('sale')}
                   />

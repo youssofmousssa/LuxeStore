@@ -1,7 +1,7 @@
 
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
-import { Heart, ShoppingBag, Image as ImageIcon } from "lucide-react";
+import { Heart, ShoppingBag, Image as ImageIcon, ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useCart } from "@/context/CartContext";
 
@@ -9,7 +9,7 @@ interface ProductCardProps {
   id: string;
   name: string;
   price: number;
-  image: string;
+  images: string[]; // Changed from image to images array
   isNew?: boolean;
   isSale?: boolean;
   salePrice?: number;
@@ -20,7 +20,7 @@ const ProductCard = ({
   id,
   name,
   price,
-  image,
+  images,
   isNew = false,
   isSale = false,
   salePrice,
@@ -28,7 +28,10 @@ const ProductCard = ({
 }: ProductCardProps) => {
   const [isHovered, setIsHovered] = useState(false);
   const [imageError, setImageError] = useState(false);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const { addItem } = useCart();
+
+  const image = images && images.length > 0 ? images[currentImageIndex] : "";
 
   const handleAddToCart = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -38,7 +41,7 @@ const ProductCard = ({
       id,
       name,
       price: isSale && salePrice ? salePrice : price,
-      image,
+      image: images && images.length > 0 ? images[0] : "",
     });
   };
 
@@ -46,6 +49,27 @@ const ProductCard = ({
     console.log("Product card image failed to load:", image);
     setImageError(true);
   };
+
+  const nextImage = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (images && images.length > 1) {
+      setCurrentImageIndex((prevIndex) => (prevIndex + 1) % images.length);
+    }
+  };
+
+  const prevImage = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (images && images.length > 1) {
+      setCurrentImageIndex((prevIndex) => 
+        prevIndex === 0 ? images.length - 1 : prevIndex - 1
+      );
+    }
+  };
+
+  // Check if this product has multiple images
+  const hasMultipleImages = images && images.length > 1;
 
   return (
     <Link
@@ -70,6 +94,41 @@ const ProductCard = ({
           <div className="w-full h-full flex flex-col items-center justify-center bg-gray-100 text-gray-400">
             <ImageIcon size={48} />
             <p className="mt-2 text-sm">No image</p>
+          </div>
+        )}
+        
+        {/* Image Navigation Arrows - Only show if multiple images */}
+        {hasMultipleImages && isHovered && (
+          <>
+            <button 
+              onClick={prevImage}
+              className="absolute left-2 top-1/2 -translate-y-1/2 p-1 rounded-full bg-white/80 hover:bg-white shadow-sm text-gray-700"
+              aria-label="Previous image"
+            >
+              <ChevronLeft size={20} />
+            </button>
+            <button 
+              onClick={nextImage}
+              className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded-full bg-white/80 hover:bg-white shadow-sm text-gray-700"
+              aria-label="Next image"
+            >
+              <ChevronRight size={20} />
+            </button>
+          </>
+        )}
+        
+        {/* Image Indicators - Only show if multiple images */}
+        {hasMultipleImages && (
+          <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5">
+            {images.map((_, index) => (
+              <div 
+                key={index}
+                className={cn(
+                  "w-1.5 h-1.5 rounded-full transition-all",
+                  currentImageIndex === index ? "bg-white scale-125" : "bg-white/50"
+                )}
+              />
+            ))}
           </div>
         )}
         

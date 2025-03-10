@@ -10,7 +10,7 @@ interface Product {
   id: string;
   name: string;
   price: number;
-  image: string;
+  images: string[]; // Changed from image to images array
   isNew?: boolean;
   isSale?: boolean;
   salePrice?: number;
@@ -25,7 +25,7 @@ const Index = () => {
   useEffect(() => {
     const fetchProducts = async () => {
       try {
-        // Fetch all products
+        // Fetch all products from Firebase
         const products = await getProducts() as Product[];
         
         // Get featured products (first 4)
@@ -46,73 +46,6 @@ const Index = () => {
 
     fetchProducts();
   }, []);
-
-  // Sample products if we don't have any from Firebase yet
-  const sampleProducts: Product[] = [
-    {
-      id: "1",
-      name: "Cotton Oversized T-Shirt",
-      price: 49.99,
-      image: "https://images.unsplash.com/photo-1554568218-0f1715e72254?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=987&q=80",
-      isNew: true,
-      categories: ["women", "new-arrivals"]
-    },
-    {
-      id: "2",
-      name: "Linen Blend Dress",
-      price: 89.99,
-      image: "https://images.unsplash.com/photo-1595777457583-95e059d581b8?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1483&q=80",
-      categories: ["women"]
-    },
-    {
-      id: "3",
-      name: "Relaxed Fit Jeans",
-      price: 79.99,
-      image: "https://images.unsplash.com/photo-1584370848010-d7fe6bc767ec?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=987&q=80",
-      isSale: true,
-      salePrice: 59.99,
-      categories: ["women", "sale"]
-    },
-    {
-      id: "4",
-      name: "Cashmere Sweater",
-      price: 149.99,
-      image: "https://images.unsplash.com/photo-1576566588028-4147f3842f27?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1364&q=80",
-      categories: ["women"]
-    },
-    {
-      id: "5",
-      name: "Silk Blouse",
-      price: 129.99,
-      image: "https://images.unsplash.com/photo-1582142306909-195724d0b6cf?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80",
-      isNew: true,
-      categories: ["women", "new-arrivals"]
-    },
-    {
-      id: "6",
-      name: "Midi Skirt",
-      price: 69.99,
-      image: "https://images.unsplash.com/photo-1551163943-3f7fb896e0db?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80",
-      categories: ["women"]
-    },
-    {
-      id: "7",
-      name: "Wide Leg Trousers",
-      price: 99.99,
-      image: "https://images.unsplash.com/photo-1509631179647-0177331693ae?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=988&q=80",
-      isSale: true,
-      salePrice: 79.99,
-      categories: ["women", "sale"]
-    },
-    {
-      id: "8",
-      name: "Linen Shorts",
-      price: 59.99,
-      image: "https://images.unsplash.com/photo-1591369822096-ffd140ec948f?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=987&q=80",
-      isNew: true,
-      categories: ["women", "new-arrivals"]
-    }
-  ];
 
   return (
     <div className="page-transition">
@@ -138,27 +71,34 @@ const Index = () => {
           </div>
           
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-10">
-            {loading
-              ? Array(4).fill(0).map((_, i) => (
-                  <div key={i} className="space-y-4 animate-pulse">
-                    <div className="aspect-[4/5] bg-secondary rounded-lg" />
-                    <div className="h-4 bg-secondary rounded w-3/4" />
-                    <div className="h-4 bg-secondary rounded w-1/4" />
-                  </div>
-                ))
-              : (featuredProducts.length > 0 ? featuredProducts : sampleProducts.slice(0, 4)).map((product) => (
-                  <ProductCard
-                    key={product.id}
-                    id={product.id}
-                    name={product.name}
-                    price={product.price}
-                    image={product.image}
-                    isNew={product.isNew}
-                    isSale={product.isSale}
-                    salePrice={product.salePrice}
-                  />
-                ))
-            }
+            {loading ? (
+              Array(4).fill(0).map((_, i) => (
+                <div key={i} className="space-y-4 animate-pulse">
+                  <div className="aspect-[4/5] bg-secondary rounded-lg" />
+                  <div className="h-4 bg-secondary rounded w-3/4" />
+                  <div className="h-4 bg-secondary rounded w-1/4" />
+                </div>
+              ))
+            ) : featuredProducts.length > 0 ? (
+              featuredProducts.map((product) => (
+                <ProductCard
+                  key={product.id}
+                  id={product.id}
+                  name={product.name}
+                  price={product.price}
+                  images={product.images}
+                  isNew={product.categories.includes('new-arrivals')}
+                  isSale={product.categories.includes('sale')}
+                  salePrice={product.salePrice}
+                />
+              ))
+            ) : (
+              <div className="col-span-4 text-center py-12">
+                <p className="text-gray-500">
+                  No products yet. Add products from the dashboard to see them here.
+                </p>
+              </div>
+            )}
           </div>
         </div>
       </section>
@@ -226,27 +166,34 @@ const Index = () => {
           </div>
           
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-10">
-            {loading
-              ? Array(8).fill(0).map((_, i) => (
-                  <div key={i} className="space-y-4 animate-pulse">
-                    <div className="aspect-[4/5] bg-secondary rounded-lg" />
-                    <div className="h-4 bg-secondary rounded w-3/4" />
-                    <div className="h-4 bg-secondary rounded w-1/4" />
-                  </div>
-                ))
-              : (newArrivals.length > 0 ? newArrivals : sampleProducts.filter(p => p.isNew)).map((product) => (
-                  <ProductCard
-                    key={product.id}
-                    id={product.id}
-                    name={product.name}
-                    price={product.price}
-                    image={product.image}
-                    isNew={product.isNew}
-                    isSale={product.isSale}
-                    salePrice={product.salePrice}
-                  />
-                ))
-            }
+            {loading ? (
+              Array(8).fill(0).map((_, i) => (
+                <div key={i} className="space-y-4 animate-pulse">
+                  <div className="aspect-[4/5] bg-secondary rounded-lg" />
+                  <div className="h-4 bg-secondary rounded w-3/4" />
+                  <div className="h-4 bg-secondary rounded w-1/4" />
+                </div>
+              ))
+            ) : newArrivals.length > 0 ? (
+              newArrivals.map((product) => (
+                <ProductCard
+                  key={product.id}
+                  id={product.id}
+                  name={product.name}
+                  price={product.price}
+                  images={product.images}
+                  isNew={true}
+                  isSale={product.categories.includes('sale')}
+                  salePrice={product.salePrice}
+                />
+              ))
+            ) : (
+              <div className="col-span-4 text-center py-12">
+                <p className="text-gray-500">
+                  No new arrivals yet. Add products with the "New Arrivals" category from the dashboard.
+                </p>
+              </div>
+            )}
           </div>
         </div>
       </section>

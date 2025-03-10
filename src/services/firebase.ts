@@ -1,4 +1,3 @@
-
 import { initializeApp } from "firebase/app";
 import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } from "firebase/auth";
 import { 
@@ -54,7 +53,7 @@ export interface Product {
   name: string;
   price: number;
   description?: string;
-  image?: string;
+  images: string[];
   sizes?: string[];
   categories?: string[];
 }
@@ -64,7 +63,7 @@ interface ProductData {
   name: string;
   price: number;
   description?: string;
-  image?: string;
+  images: string[];
   sizes?: string[];
   categories?: string[];
 }
@@ -78,7 +77,7 @@ export const ensureSampleProducts = async () => {
         name: "Cotton Oversized T-Shirt",
         price: 49.99,
         description: "Comfortable and stylish oversized t-shirt made from 100% cotton.",
-        image: "https://images.unsplash.com/photo-1554568218-0f1715e72254?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=987&q=80",
+        images: ["https://images.unsplash.com/photo-1554568218-0f1715e72254?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=987&q=80"],
         sizes: ["S", "M", "L", "XL"],
         categories: ["women", "new-arrivals"]
       },
@@ -87,7 +86,7 @@ export const ensureSampleProducts = async () => {
         name: "Linen Blend Dress",
         price: 89.99,
         description: "Elegant linen blend dress perfect for summer days.",
-        image: "https://images.unsplash.com/photo-1595777457583-95e059d581b8?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1483&q=80",
+        images: ["https://images.unsplash.com/photo-1595777457583-95e059d581b8?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1483&q=80"],
         sizes: ["XS", "S", "M", "L"],
         categories: ["women"]
       },
@@ -96,7 +95,7 @@ export const ensureSampleProducts = async () => {
         name: "Relaxed Fit Jeans",
         price: 79.99,
         description: "Comfortable relaxed fit jeans with a modern look.",
-        image: "https://images.unsplash.com/photo-1584370848010-d7fe6bc767ec?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=987&q=80",
+        images: ["https://images.unsplash.com/photo-1584370848010-d7fe6bc767ec?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=987&q=80"],
         salePrice: 59.99,
         sizes: ["26", "28", "30", "32"],
         categories: ["women", "sale"]
@@ -106,23 +105,26 @@ export const ensureSampleProducts = async () => {
         name: "Cashmere Sweater",
         price: 149.99,
         description: "Luxurious cashmere sweater for ultimate comfort.",
-        image: "https://images.unsplash.com/photo-1576566588028-4147f3842f27?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1364&q=80",
+        images: ["https://images.unsplash.com/photo-1576566588028-4147f3842f27?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1364&q=80"],
         sizes: ["S", "M", "L"],
         categories: ["women"]
       }
     ];
 
-    // Check if sample products exist
-    for (const product of sampleProducts) {
-      const docRef = doc(db, "products", product.id);
-      const docSnap = await getDoc(docRef);
-      
-      if (!docSnap.exists()) {
-        // Create sample product
+    // Check if there are any products at all
+    const productsRef = collection(db, "products");
+    const productsSnap = await getDocs(productsRef);
+    
+    if (productsSnap.empty) {
+      console.log("No products exist, creating sample products");
+      // Create sample products
+      for (const product of sampleProducts) {
         const { id, ...productData } = product;
-        await setDoc(docRef, productData);
+        await setDoc(doc(db, "products", id), productData);
         console.log(`Sample product created: ${product.name}`);
       }
+    } else {
+      console.log("Products already exist, skipping sample creation");
     }
     
     return true;
@@ -153,7 +155,7 @@ export const getProducts = async (category?: string) => {
         name: data.name || "",
         price: data.price || 0,
         description: data.description || "",
-        image: data.image || "",
+        images: data.images || [],
         sizes: data.sizes || [],
         categories: data.categories || []
       } as Product;
@@ -181,7 +183,7 @@ export const getProduct = async (id: string) => {
         name: data.name || "",
         price: data.price || 0,
         description: data.description || "",
-        image: data.image || "",
+        images: data.images || [],
         sizes: data.sizes || [],
         categories: data.categories || []
       } as Product;
@@ -225,10 +227,10 @@ export const deleteProduct = async (id: string) => {
   }
 };
 
-// Upload image to ImgBB instead of Firebase Storage
+// Upload image to ImgBB
 export const uploadImage = async (file: File, path: string) => {
   try {
-    console.log("Uploading to ImgBB instead of Firebase Storage");
+    console.log("Uploading to ImgBB");
     const formData = new FormData();
     formData.append("image", file);
     formData.append("key", IMGBB_API_KEY);
@@ -252,6 +254,22 @@ export const uploadImage = async (file: File, path: string) => {
     }
   } catch (error) {
     console.error("Error uploading image to ImgBB:", error);
+    throw error;
+  }
+};
+
+// Upload multiple images to ImgBB
+export const uploadMultipleImages = async (files: File[]) => {
+  try {
+    const uploadPromises = files.map(file => {
+      const timestamp = Date.now();
+      const path = `products/${timestamp}_${file.name}`;
+      return uploadImage(file, path);
+    });
+    
+    return await Promise.all(uploadPromises);
+  } catch (error) {
+    console.error("Error uploading multiple images:", error);
     throw error;
   }
 };
