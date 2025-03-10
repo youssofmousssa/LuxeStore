@@ -1,4 +1,3 @@
-
 import { initializeApp } from "firebase/app";
 import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } from "firebase/auth";
 import { 
@@ -59,6 +58,8 @@ export interface Product {
   categories?: string[];
   salePrice?: number;
   salePercentage?: number;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 // Type for Firestore document data
@@ -71,6 +72,8 @@ interface ProductData {
   categories?: string[];
   salePrice?: number;
   salePercentage?: number;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 // Products functions

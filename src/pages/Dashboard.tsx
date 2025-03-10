@@ -218,7 +218,7 @@ const Dashboard = () => {
         }
       }
       
-      const productData: Omit<Product, 'id'> = {
+      const productData: Partial<Product> = {
         name: formData.name,
         price: parseFloat(formData.price),
         description: formData.description,
