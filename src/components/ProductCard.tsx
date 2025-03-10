@@ -9,10 +9,11 @@ interface ProductCardProps {
   id: string;
   name: string;
   price: number;
-  images: string[]; // Changed from image to images array
+  images: string[];
   isNew?: boolean;
   isSale?: boolean;
   salePrice?: number;
+  salePercentage?: number;
   className?: string;
 }
 
@@ -24,6 +25,7 @@ const ProductCard = ({
   isNew = false,
   isSale = false,
   salePrice,
+  salePercentage,
   className,
 }: ProductCardProps) => {
   const [isHovered, setIsHovered] = useState(false);
@@ -142,7 +144,7 @@ const ProductCard = ({
           
           {isSale && (
             <span className="inline-block bg-red-500 text-white text-xs font-medium px-2 py-1 rounded">
-              SALE
+              {salePercentage ? `${salePercentage}% OFF` : 'SALE'}
             </span>
           )}
         </div>
@@ -185,8 +187,13 @@ const ProductCard = ({
         <div className="mt-1 flex items-center">
           {isSale && salePrice ? (
             <>
-              <span className="text-sm font-medium">${salePrice.toFixed(2)}</span>
+              <span className="text-sm font-medium text-red-600">${salePrice.toFixed(2)}</span>
               <span className="ml-2 text-sm text-gray-500 line-through">${price.toFixed(2)}</span>
+              {salePercentage && (
+                <span className="ml-2 text-xs text-red-600">
+                  {salePercentage}% off
+                </span>
+              )}
             </>
           ) : (
             <span className="text-sm font-medium">${price.toFixed(2)}</span>

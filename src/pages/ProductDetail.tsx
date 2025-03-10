@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { getProduct, Product, ensureSampleProducts } from "../services/firebase";
+import { getProduct, Product } from "../services/firebase";
 import { useCart } from "../context/CartContext";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -21,13 +21,13 @@ const ProductDetail = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
+    // Scroll to top when component mounts
+    window.scrollTo(0, 0);
+    
     const fetchProductDetails = async () => {
       try {
         if (!id) return;
         setLoading(true);
-        
-        // First ensure sample products exist
-        await ensureSampleProducts();
         
         const productData = await getProduct(id);
         console.log("Product data:", productData);
@@ -128,25 +128,39 @@ const ProductDetail = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
         {/* Product Image Gallery */}
         <ProductImageGallery 
-          images={product.images || []} 
-          productName={product.name} 
+          images={product?.images || []} 
+          productName={product?.name || ""} 
         />
 
         {/* Product Details */}
         <div className="space-y-8">
           <div>
-            <h1 className="text-3xl font-bold">{product.name}</h1>
-            <p className="text-2xl font-medium mt-2">${product.price.toFixed(2)}</p>
+            <h1 className="text-3xl font-bold">{product?.name}</h1>
+            <div className="mt-2">
+              {product?.salePrice ? (
+                <div className="flex items-center gap-2">
+                  <p className="text-2xl font-medium text-red-600">${product.salePrice.toFixed(2)}</p>
+                  <p className="text-lg text-gray-500 line-through">${product?.price.toFixed(2)}</p>
+                  {product.salePercentage && (
+                    <span className="bg-red-100 text-red-800 text-xs font-medium mr-2 px-2.5 py-0.5 rounded">
+                      {product.salePercentage}% OFF
+                    </span>
+                  )}
+                </div>
+              ) : (
+                <p className="text-2xl font-medium">${product?.price.toFixed(2)}</p>
+              )}
+            </div>
           </div>
 
           {/* Description */}
           <div className="prose">
             <h3 className="text-lg font-medium">Description</h3>
-            <p className="text-gray-700">{product.description || "No description available."}</p>
+            <p className="text-gray-700">{product?.description || "No description available."}</p>
           </div>
 
           {/* Sizes */}
-          {product.sizes && product.sizes.length > 0 && (
+          {product?.sizes && product.sizes.length > 0 && (
             <div>
               <h3 className="text-lg font-medium mb-3">Select Size</h3>
               <div className="flex flex-wrap gap-2">
@@ -193,7 +207,31 @@ const ProductDetail = () => {
           {/* Add to Cart Button */}
           <Button 
             className="w-full py-6 text-lg" 
-            onClick={handleAddToCart}
+            onClick={() => {
+              if (!product) return;
+              
+              if (!selectedSize && product.sizes && product.sizes.length > 0) {
+                toast({
+                  variant: "destructive",
+                  title: "Please select a size",
+                  description: "You must select a size before adding to cart",
+                });
+                return;
+              }
+
+              addItem({
+                id: product.id,
+                name: product.name,
+                price: product.salePrice || product.price,
+                image: product.images && product.images.length > 0 ? product.images[0] : "",
+                selectedSize,
+              }, quantity);
+
+              toast({
+                title: "Added to cart",
+                description: `${product.name} has been added to your cart`,
+              });
+            }}
           >
             <ShoppingCart className="mr-2 h-5 w-5" />
             Add to Cart
@@ -204,9 +242,10 @@ const ProductDetail = () => {
             variant="outline"
             className="w-full"
             onClick={() => {
+              if (!product) return;
               const message = encodeURIComponent(
                 `Check out this product: ${product.name}\n` +
-                `Price: $${product.price.toFixed(2)}\n` +
+                `Price: $${(product.salePrice || product.price).toFixed(2)}\n` +
                 `Description: ${product.description || "No description available."}\n` +
                 `Link: ${window.location.href}`
               );

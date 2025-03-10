@@ -1,3 +1,4 @@
+
 import { initializeApp } from "firebase/app";
 import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } from "firebase/auth";
 import { 
@@ -56,6 +57,8 @@ export interface Product {
   images: string[];
   sizes?: string[];
   categories?: string[];
+  salePrice?: number;
+  salePercentage?: number;
 }
 
 // Type for Firestore document data
@@ -66,80 +69,13 @@ interface ProductData {
   images: string[];
   sizes?: string[];
   categories?: string[];
+  salePrice?: number;
+  salePercentage?: number;
 }
-
-// Add sample products if they don't exist
-export const ensureSampleProducts = async () => {
-  try {
-    const sampleProducts = [
-      {
-        id: "1",
-        name: "Cotton Oversized T-Shirt",
-        price: 49.99,
-        description: "Comfortable and stylish oversized t-shirt made from 100% cotton.",
-        images: ["https://images.unsplash.com/photo-1554568218-0f1715e72254?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=987&q=80"],
-        sizes: ["S", "M", "L", "XL"],
-        categories: ["women", "new-arrivals"]
-      },
-      {
-        id: "2",
-        name: "Linen Blend Dress",
-        price: 89.99,
-        description: "Elegant linen blend dress perfect for summer days.",
-        images: ["https://images.unsplash.com/photo-1595777457583-95e059d581b8?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1483&q=80"],
-        sizes: ["XS", "S", "M", "L"],
-        categories: ["women"]
-      },
-      {
-        id: "3",
-        name: "Relaxed Fit Jeans",
-        price: 79.99,
-        description: "Comfortable relaxed fit jeans with a modern look.",
-        images: ["https://images.unsplash.com/photo-1584370848010-d7fe6bc767ec?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=987&q=80"],
-        salePrice: 59.99,
-        sizes: ["26", "28", "30", "32"],
-        categories: ["women", "sale"]
-      },
-      {
-        id: "4",
-        name: "Cashmere Sweater",
-        price: 149.99,
-        description: "Luxurious cashmere sweater for ultimate comfort.",
-        images: ["https://images.unsplash.com/photo-1576566588028-4147f3842f27?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1364&q=80"],
-        sizes: ["S", "M", "L"],
-        categories: ["women"]
-      }
-    ];
-
-    // Check if there are any products at all
-    const productsRef = collection(db, "products");
-    const productsSnap = await getDocs(productsRef);
-    
-    if (productsSnap.empty) {
-      console.log("No products exist, creating sample products");
-      // Create sample products
-      for (const product of sampleProducts) {
-        const { id, ...productData } = product;
-        await setDoc(doc(db, "products", id), productData);
-        console.log(`Sample product created: ${product.name}`);
-      }
-    } else {
-      console.log("Products already exist, skipping sample creation");
-    }
-    
-    return true;
-  } catch (error) {
-    console.error("Error ensuring sample products:", error);
-    return false;
-  }
-};
 
 // Products functions
 export const getProducts = async (category?: string) => {
   try {
-    // First ensure sample products exist
-    await ensureSampleProducts();
-    
     let q;
     if (category) {
       q = query(collection(db, "products"), where("categories", "array-contains", category));
@@ -157,7 +93,9 @@ export const getProducts = async (category?: string) => {
         description: data.description || "",
         images: data.images || [],
         sizes: data.sizes || [],
-        categories: data.categories || []
+        categories: data.categories || [],
+        salePrice: data.salePrice,
+        salePercentage: data.salePercentage
       } as Product;
     });
     
@@ -170,9 +108,6 @@ export const getProducts = async (category?: string) => {
 
 export const getProduct = async (id: string) => {
   try {
-    // First ensure sample products exist
-    await ensureSampleProducts();
-    
     const docRef = doc(db, "products", id);
     const docSnap = await getDoc(docRef);
     
@@ -185,7 +120,9 @@ export const getProduct = async (id: string) => {
         description: data.description || "",
         images: data.images || [],
         sizes: data.sizes || [],
-        categories: data.categories || []
+        categories: data.categories || [],
+        salePrice: data.salePrice,
+        salePercentage: data.salePercentage
       } as Product;
     } else {
       throw new Error("Product not found");
@@ -223,6 +160,66 @@ export const deleteProduct = async (id: string) => {
     return true;
   } catch (error) {
     console.error("Error deleting product:", error);
+    throw error;
+  }
+};
+
+export const markProductAsSale = async (id: string, salePrice: number) => {
+  try {
+    const docRef = doc(db, "products", id);
+    const docSnap = await getDoc(docRef);
+    
+    if (docSnap.exists()) {
+      const data = docSnap.data() as ProductData;
+      const originalPrice = data.price;
+      const salePercentage = Math.round(((originalPrice - salePrice) / originalPrice) * 100);
+      
+      // Add "sale" category if not already there
+      let categories = data.categories || [];
+      if (!categories.includes("sale")) {
+        categories.push("sale");
+      }
+      
+      await updateDoc(docRef, {
+        salePrice,
+        salePercentage,
+        categories
+      });
+      
+      return true;
+    } else {
+      throw new Error("Product not found");
+    }
+  } catch (error) {
+    console.error("Error marking product as sale:", error);
+    throw error;
+  }
+};
+
+export const removeProductFromSale = async (id: string) => {
+  try {
+    const docRef = doc(db, "products", id);
+    const docSnap = await getDoc(docRef);
+    
+    if (docSnap.exists()) {
+      const data = docSnap.data() as ProductData;
+      let categories = data.categories || [];
+      
+      // Remove "sale" category
+      categories = categories.filter(cat => cat !== "sale");
+      
+      await updateDoc(docRef, {
+        salePrice: null,
+        salePercentage: null,
+        categories
+      });
+      
+      return true;
+    } else {
+      throw new Error("Product not found");
+    }
+  } catch (error) {
+    console.error("Error removing product from sale:", error);
     throw error;
   }
 };

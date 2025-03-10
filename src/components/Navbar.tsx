@@ -1,6 +1,7 @@
+
 import React, { useState, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { ShoppingBag, Menu, X, User, LogOut } from "lucide-react";
+import { ShoppingBag, Menu, X, User, LogOut, Settings } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useCart } from "@/context/CartContext";
 import AuthModal from "./AuthModal";
@@ -16,7 +17,7 @@ const Navbar = () => {
 
   const location = useLocation();
   const navigate = useNavigate();
-  const { currentUser, logout } = useAuth();
+  const { currentUser, logout, isAdmin } = useAuth();
   const { itemCount } = useCart();
 
   useEffect(() => {
@@ -43,6 +44,7 @@ const Navbar = () => {
     try {
       await logout();
       navigate("/");
+      setDropdownVisible(false);
     } catch (error) {
       console.error("Error logging out:", error);
     }
@@ -56,7 +58,7 @@ const Navbar = () => {
     }
   };
 
-  const userInitial = currentUser?.email.charAt(0).toUpperCase();
+  const userInitial = currentUser?.email ? currentUser.email.charAt(0).toUpperCase() : null;
 
   return (
     <>
@@ -102,30 +104,42 @@ const Navbar = () => {
               <div className="relative">
                 <button 
                   onClick={toggleDropdown}
-                  className="flex items-center justify-center w-10 h-10 bg-gray-200 rounded-full text-gray-700 hover:bg-gray-300 transition duration-300"
+                  className={cn(
+                    "flex items-center justify-center w-10 h-10 rounded-full transition duration-300",
+                    currentUser 
+                      ? "bg-gradient-to-r from-indigo-500 to-purple-500 text-white font-medium"
+                      : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                  )}
                 >
-                  {userInitial}
+                  {currentUser ? userInitial : <User size={20} />}
                 </button>
-                {dropdownVisible && (
-                  <div className="absolute right-0 mt-2 w-48 bg-white shadow-lg rounded-lg border border-gray-200 overflow-hidden transition-transform transform scale-95 opacity-100">
-                    <div className="px-4 py-3 bg-gray-100 text-center font-medium text-gray-800 border-b border-gray-200">
-                      {currentUser?.email}
+                
+                {dropdownVisible && currentUser && (
+                  <div className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-xl border border-gray-100 overflow-hidden transition-all duration-300 z-50">
+                    <div className="px-4 py-3 bg-gray-50 border-b border-gray-100">
+                      <p className="text-sm font-medium text-gray-900 truncate">{currentUser.email}</p>
                     </div>
-                    <Link 
-                      to="/dashboard" 
-                      className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition duration-300"
-                      onClick={() => setDropdownVisible(false)}
-                    >
-                      <User className="mr-2" />
-                      Dashboard
-                    </Link>
-                    <button 
-                      onClick={handleLogout}
-                      className="flex items-center w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100 transition duration-300"
-                    >
-                      <LogOut className="mr-2" />
-                      Logout
-                    </button>
+                    
+                    <div className="py-1">
+                      {isAdmin && (
+                        <Link 
+                          to="/dashboard" 
+                          className="flex items-center px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition duration-300"
+                          onClick={() => setDropdownVisible(false)}
+                        >
+                          <Settings className="mr-2 h-4 w-4" />
+                          Dashboard
+                        </Link>
+                      )}
+                      
+                      <button 
+                        onClick={handleLogout}
+                        className="flex items-center w-full text-left px-4 py-2.5 text-sm text-red-600 hover:bg-gray-50 transition duration-300"
+                      >
+                        <LogOut className="mr-2 h-4 w-4" />
+                        Logout
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>

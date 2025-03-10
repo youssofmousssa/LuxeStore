@@ -7,31 +7,29 @@ import {
   getProducts, 
   addProduct, 
   updateProduct, 
-  deleteProduct, 
-  uploadMultipleImages 
+  deleteProduct,
+  markProductAsSale,
+  removeProductFromSale,
+  uploadMultipleImages,
+  Product
 } from "../services/firebase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { 
+  Dialog, 
+  DialogContent, 
+  DialogHeader, 
+  DialogTitle, 
+  DialogTrigger,
+  DialogFooter 
+} from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Pencil, Trash2, Loader2, AlertCircle } from "lucide-react";
+import { Plus, Pencil, Trash2, Loader2, AlertCircle, Percent } from "lucide-react";
 import ProductCard from "@/components/ProductCard";
 import MultipleImageUpload from "@/components/MultipleImageUpload";
-
-interface Product {
-  id: string;
-  name: string;
-  price: number;
-  description: string;
-  categories: string[];
-  sizes: string[];
-  images: string[];
-  createdAt?: string;
-  updatedAt: string;
-}
 
 const Dashboard = () => {
   const { currentUser, isAdmin } = useAuth();
@@ -41,12 +39,14 @@ const Dashboard = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [activeTab, setActiveTab] = useState("women");
   const [loading, setLoading] = useState(true);
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isProductModalOpen, setIsProductModalOpen] = useState(false);
+  const [isSaleModalOpen, setIsSaleModalOpen] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [currentProductId, setCurrentProductId] = useState("");
   const [uploadImages, setUploadImages] = useState<(string | File)[]>([]);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [salePrice, setSalePrice] = useState("");
 
   const [formData, setFormData] = useState({
     name: "",
@@ -149,9 +149,10 @@ const Dashboard = () => {
     setIsEditMode(false);
     setCurrentProductId("");
     setUploadError(null);
+    setSalePrice("");
   };
 
-  const openModal = (product?: Product) => {
+  const openProductModal = (product?: Product) => {
     resetForm();
     
     if (product) {
@@ -168,10 +169,16 @@ const Dashboard = () => {
       setUploadImages(product.images || []);
     }
     
-    setIsModalOpen(true);
+    setIsProductModalOpen(true);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const openSaleModal = (product: Product) => {
+    setCurrentProductId(product.id);
+    setSalePrice(product.salePrice?.toString() || "");
+    setIsSaleModalOpen(true);
+  };
+
+  const handleProductSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!formData.name || !formData.price) {
@@ -240,7 +247,7 @@ const Dashboard = () => {
       }
       
       await fetchProducts(); // Refresh products list
-      setIsModalOpen(false);
+      setIsProductModalOpen(false);
       resetForm();
     } catch (error) {
       console.error("Error saving product:", error);
@@ -251,6 +258,80 @@ const Dashboard = () => {
       });
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleSaleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!salePrice || parseFloat(salePrice) <= 0) {
+      toast({
+        variant: "destructive",
+        title: "Invalid Price",
+        description: "Please enter a valid sale price",
+      });
+      return;
+    }
+    
+    try {
+      setIsSaving(true);
+      
+      const product = products.find(p => p.id === currentProductId);
+      if (!product) {
+        throw new Error("Product not found");
+      }
+      
+      const newSalePrice = parseFloat(salePrice);
+      
+      if (newSalePrice >= product.price) {
+        toast({
+          variant: "destructive",
+          title: "Invalid Sale Price",
+          description: "Sale price must be lower than the original price",
+        });
+        return;
+      }
+      
+      await markProductAsSale(currentProductId, newSalePrice);
+      
+      toast({
+        title: "Product on Sale",
+        description: "Product has been successfully marked as on sale",
+      });
+      
+      await fetchProducts(); // Refresh products list
+      setIsSaleModalOpen(false);
+      setSalePrice("");
+      setCurrentProductId("");
+    } catch (error) {
+      console.error("Error setting product on sale:", error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to set product on sale",
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleRemoveFromSale = async (id: string) => {
+    if (window.confirm("Are you sure you want to remove this product from sale?")) {
+      try {
+        await removeProductFromSale(id);
+        toast({
+          title: "Sale Removed",
+          description: "Product has been removed from sale",
+        });
+        fetchProducts();
+      } catch (error) {
+        console.error("Error removing product from sale:", error);
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "Failed to remove product from sale",
+        });
+      }
     }
   };
 
@@ -287,9 +368,9 @@ const Dashboard = () => {
     <div className="container mx-auto py-12 px-4 max-w-7xl animate-fade-in">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8">
         <h1 className="text-3xl font-bold">Dashboard</h1>
-        <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+        <Dialog open={isProductModalOpen} onOpenChange={setIsProductModalOpen}>
           <DialogTrigger asChild>
-            <Button className="mt-4 md:mt-0" onClick={() => openModal()}>
+            <Button className="mt-4 md:mt-0" onClick={() => openProductModal()}>
               <Plus size={18} className="mr-2" /> Add Product
             </Button>
           </DialogTrigger>
@@ -299,7 +380,7 @@ const Dashboard = () => {
                 {isEditMode ? "Edit Product" : "Add New Product"}
               </DialogTitle>
             </DialogHeader>
-            <form onSubmit={handleSubmit} className="space-y-6 mt-4">
+            <form onSubmit={handleProductSubmit} className="space-y-6 mt-4">
               <div className="space-y-2">
                 <Label htmlFor="name">Product Name *</Label>
                 <Input
@@ -363,18 +444,6 @@ const Dashboard = () => {
                       New Arrivals
                     </Label>
                   </div>
-                  <div className="flex items-center space-x-2">
-                    <Checkbox
-                      id="category-sale"
-                      checked={formData.categories.includes("sale")}
-                      onCheckedChange={(checked) => 
-                        handleCategoryChange("sale", checked as boolean)
-                      }
-                    />
-                    <Label htmlFor="category-sale" className="capitalize">
-                      Sale
-                    </Label>
-                  </div>
                 </div>
               </div>
               
@@ -396,7 +465,7 @@ const Dashboard = () => {
                   type="button"
                   variant="outline"
                   onClick={() => {
-                    setIsModalOpen(false);
+                    setIsProductModalOpen(false);
                     resetForm();
                   }}
                   disabled={isSaving}
@@ -414,6 +483,54 @@ const Dashboard = () => {
                   )}
                 </Button>
               </div>
+            </form>
+          </DialogContent>
+        </Dialog>
+        
+        {/* Sale Price Modal */}
+        <Dialog open={isSaleModalOpen} onOpenChange={setIsSaleModalOpen}>
+          <DialogContent className="sm:max-w-[400px]">
+            <DialogHeader>
+              <DialogTitle className="text-xl">Set Sale Price</DialogTitle>
+            </DialogHeader>
+            <form onSubmit={handleSaleSubmit} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="salePrice">Sale Price ($)</Label>
+                <Input
+                  id="salePrice"
+                  value={salePrice}
+                  onChange={(e) => setSalePrice(e.target.value.replace(/[^0-9.]/g, ""))}
+                  required
+                  placeholder="19.99"
+                  className="h-11"
+                />
+                <p className="text-xs text-gray-500">
+                  Enter a price lower than the original price to create a sale.
+                </p>
+              </div>
+              <DialogFooter>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setIsSaleModalOpen(false);
+                    setSalePrice("");
+                  }}
+                  disabled={isSaving}
+                >
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={isSaving}>
+                  {isSaving ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Setting Sale...
+                    </>
+                  ) : (
+                    "Set Sale"
+                  )}
+                </Button>
+              </DialogFooter>
             </form>
           </DialogContent>
         </Dialog>
@@ -436,7 +553,7 @@ const Dashboard = () => {
           ) : filteredProducts.length === 0 ? (
             <div className="text-center py-12 border-2 border-dashed border-gray-200 rounded-xl">
               <p className="text-gray-500 mb-4">No products found in this category.</p>
-              <Button onClick={() => openModal()}>
+              <Button onClick={() => openProductModal()}>
                 <Plus size={16} className="mr-2" />
                 Add Product
               </Button>
@@ -452,21 +569,48 @@ const Dashboard = () => {
                     images={product.images}
                     isNew={product.categories.includes('new-arrivals')}
                     isSale={product.categories.includes('sale')}
+                    salePrice={product.salePrice}
+                    salePercentage={product.salePercentage}
                   />
                   <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                     <Button
                       size="icon"
                       variant="secondary"
-                      onClick={() => openModal(product)}
+                      onClick={() => openProductModal(product)}
                       className="h-8 w-8 bg-white/90 shadow-sm"
+                      title="Edit Product"
                     >
                       <Pencil size={14} />
                     </Button>
+                    
+                    {product.categories.includes('sale') ? (
+                      <Button
+                        size="icon"
+                        variant="secondary"
+                        onClick={() => handleRemoveFromSale(product.id)}
+                        className="h-8 w-8 bg-white/90 shadow-sm"
+                        title="Remove from Sale"
+                      >
+                        <Percent size={14} />
+                      </Button>
+                    ) : (
+                      <Button
+                        size="icon"
+                        variant="secondary"
+                        onClick={() => openSaleModal(product)}
+                        className="h-8 w-8 bg-white/90 shadow-sm"
+                        title="Set Sale Price"
+                      >
+                        <Percent size={14} />
+                      </Button>
+                    )}
+                    
                     <Button
                       size="icon"
                       variant="destructive"
                       onClick={() => handleDelete(product.id)}
                       className="h-8 w-8"
+                      title="Delete Product"
                     >
                       <Trash2 size={14} />
                     </Button>
